@@ -44,7 +44,7 @@ export const ModeToggle = () => {
 
   return (
     <button
-      className="flex items-center rounded-md px-2 py-2 hover:bg-neutral-100 dark:hover:bg-neutral-800"
+      className="flex items-center rounded-md px-2 py-2 shadow-[var(--shadow-aceternity)] hover:bg-neutral-100 dark:hover:bg-neutral-800"
       onClick={SWITCH}
     >
       {theme === "light" ? (

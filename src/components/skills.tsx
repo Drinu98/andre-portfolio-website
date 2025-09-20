@@ -1,5 +1,5 @@
 "use client";
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { motion } from "motion/react";
 import { SectionHeading } from "./section-heading";
 import { StackItem } from "./stack-item";
@@ -14,14 +14,37 @@ type SkillCategory = {
 };
 
 const SkillItem = ({ technology, className }: { technology: string; className?: string }) => {
+  const [isMobile, setIsMobile] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  useEffect(() => {
+    const checkIsMobile = () => {
+      setIsMobile(window.innerWidth < 768); // md breakpoint
+    };
+    
+    checkIsMobile();
+    window.addEventListener('resize', checkIsMobile);
+    
+    return () => window.removeEventListener('resize', checkIsMobile);
+  }, []);
+
+  const handleClick = () => {
+    if (isMobile) {
+      setIsExpanded(!isExpanded);
+    }
+  };
+
   return (
     <motion.div
       layout
-      whileHover="animate"
-      whileTap="animate"
+      whileHover={!isMobile ? "animate" : undefined}
+      whileTap={!isMobile ? "animate" : undefined}
       initial="initial"
+      animate={isMobile && isExpanded ? "animate" : "initial"}
+      onClick={handleClick}
       className={cn(
         "flex items-center justify-center rounded-full border border-neutral-200 bg-neutral-100 px-4 py-4 text-sm mr-2 text-neutral-500 dark:border-neutral-700 dark:bg-neutral-800",
+        isMobile && "cursor-pointer",
         className,
       )}
     >

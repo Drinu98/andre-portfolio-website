@@ -27,6 +27,15 @@ export default function Home() {
           software engineer with an eye for design.
         </Subheading>
         
+        <div className="px-4 pt-4 mb-4">
+          <a
+            href="#contact"
+            className="inline-block rounded-md border border-neutral-200 bg-neutral-100 px-6 py-3 text-sm font-medium text-neutral-700 shadow-[0px_4px_8px_0px_var(--color-neutral-200)_inset] transition-colors hover:bg-neutral-200 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200 dark:shadow-[0px_4px_8px_0px_var(--color-neutral-700)_inset] hover:dark:bg-neutral-700"
+          >
+            Get in Touch
+          </a>
+        </div>
+        
         <section id="about">
           <About />
         </section>
