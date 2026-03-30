@@ -92,12 +92,12 @@ const skillCategories: SkillCategory[] = [
   },
   {
     title: "Tools & Platforms",
-    skills: ["Vercel", "Stripe", "Upstash", "Cypress"],
+    skills: ["Vercel", "Railway", "Stripe", "Upstash", "Sentry", "Pusher", "Cypress", "Vitest"],
     delay: 0.3,
   },
   {
     title: "CMS & Website Builders",
-    skills: ["Squarespace"],
+    skills: ["Squarespace", "WordPress"],
     delay: 0.4,
   },
 ];

@@ -13,9 +13,19 @@ export const achievements: AchievementYear[] = [
     title: "2025",
     content: [
       {
-        title: "Reached $20K MRR with my VSCode fork.",
+        title: "Launched Serva",
         description:
-          "Reached the revenue milestone of $20K MRR with my VSCode fork.",
+          "Built and launched Serva end‑to‑end - from UI/UX and product design through backend and deployment.",
+      },
+      {
+        title: "Built mobile experiences alongside web",
+        description:
+          "Designed and implemented mobile app flows that match the web product and scale with real usage.",
+      },
+      {
+        title: "Production‑ready deployments & monitoring",
+        description:
+          "Set up CI/CD, performance budgets, and error monitoring so launches stay stable after day one.",
       },
     ],
   },
@@ -23,14 +33,19 @@ export const achievements: AchievementYear[] = [
     title: "2024",
     content: [
       {
-        title: "Launched my own developer tools startup",
+        title: "Designed systems, not just screens",
         description:
-          "Founded a company focused on creating innovative tools for software developers.",
+          "Worked with clients to define requirements, model data, and build maintainable architectures.",
       },
       {
-        title: "Spoke at React Conference",
+        title: "Improved performance & SEO for client sites",
         description:
-          "Delivered a keynote presentation about modern frontend architecture patterns.",
+          "Optimized Core Web Vitals, metadata, and accessibility to improve discoverability and conversions.",
+      },
+      {
+        title: "Delivered clean handoffs and documentation",
+        description:
+          "Provided clear project docs and onboarding so teams can confidently run and extend the system.",
       },
     ],
   },

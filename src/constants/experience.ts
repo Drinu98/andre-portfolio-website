@@ -2,7 +2,7 @@ export type Experience = {
     company: string;
     designation: string;
     logo: string;
-    description: string;
+    description: string | string[];
     startDate: string;
     endDate: string;
     location: string;
@@ -15,17 +15,27 @@ export const experience: Experience[] = [
     company: "Self Employed",
     designation: "Full Stack Developer",
     logo: "/images/logos/andreLogo.png",
-    description: "Worked on various projects for clients, including a web application for a local business and a mobile application for a local restaurant.",
+    description: [
+      "Full stack developer building and designing end-to-end systems for clients.",
+      "Deliver websites and mobile applications, from UI/UX through backend and deployment.",
+    ],
     startDate: "November 2024",
     endDate: "Present", 
     location: "Worldwide",
-    stack: ["React", "TypeScript", "Node.js", "PostgreSQL","Tailwind CSS", "HTML5", "CSS3", "Next.js", "Prisma", "Vercel"]
+    stack: ["React", "TypeScript","Tailwind CSS", "Next.js", "Prisma", "Vercel", "Stripe", "Pusher", "Upstash", "Railway", "Sentry", "Vitest"]
   },
   {
     company: "BOV",
     designation: "Software Engineer",
     logo: "/images/logos/bov.png",
-    description: "Led the development of key features for Google Cloud Platform's web console while improving performance metrics by 35%.",
+    description: [
+      "Supported applications crucial to the bank's infrastructure (e.g. Collateral Processing System, Revenue Management).",
+      "Maintained and improved a portfolio totaling 11 supported applications.",
+      "Coordinated new projects with external companies to set up new applications that are both Customer Facing and for internal use.",
+      "Assisted in creating a proper and detailed Knowledge base for the applications supported by our team.",
+      "Developed small applications that quicken processes and are User friendly.",
+      "Fixed and assisted in production issues that arose throughout."
+    ],
     startDate: "August 2021",
     endDate: "November 2024",
     location: "St.Venera, Malta",
@@ -34,8 +44,8 @@ export const experience: Experience[] = [
   {
     company: "O Gaming",
     designation: "Junior Tech Specialist",
-    logo: "/images/logos/airbnb-logo.png",
-    description: "Developed and maintained core components of Airbnb's booking platform.",
+    logo: "/images/logos/andreLogo.png",
+    description: "Developed and maintained features for the O Gaming website. Updated Content throughout the website.",
     startDate: "August 2020",
     endDate: "May 2021",
     location: "Sliema, Malta",

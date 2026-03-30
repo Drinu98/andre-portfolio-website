@@ -32,7 +32,7 @@ export const Projects = ({
             key={project.title}
             className="group group relative mb-4 rounded-2xl"
           >
-            <Link href={project.href}>
+            <Link href={project.href} target="_blank" rel="noopener noreferrer">
               <Image
                 src={project.src}
                 alt={project.title}
@@ -42,9 +42,9 @@ export const Projects = ({
               />
               <div className="flex flex-1 flex-col justify-between py-4 transition-all duration-300 group-hover:px-4">
                 <div>
-                  <h2 className="z-20 mt-2 font-medium tracking-tight text-neutral-500 dark:text-neutral-200">
+                  <h3 className="z-20 mt-2 font-medium tracking-tight text-neutral-500 dark:text-neutral-200">
                     {project.title}
-                  </h2>
+                  </h3>
                   <p className="mt-2 max-w-[14rem] text-sm text-neutral-500 dark:text-neutral-400">
                     {project.description}
                   </p>

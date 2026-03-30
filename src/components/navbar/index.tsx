@@ -22,7 +22,7 @@ export const Navbar = () => {
       href: "#projects",
     },
     { title: "Experience", href: "#experience" },
-    { title: "Testimonials", href: "#testimonials" },
+    // { title: "Testimonials", href: "#testimonials" },
     {
       title: "Contact",
       href: "#contact",

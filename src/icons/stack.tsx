@@ -8,6 +8,7 @@ import {
   SiGraphql, 
   SiJest, 
   SiCypress, 
+  SiVitest,
   SiJavascript, 
   SiWebrtc, 
   SiWebpack, 
@@ -29,7 +30,11 @@ import {
   SiPlanetscale,
   SiUpstash,
   SiRedis,
-  SiShadcnui
+  SiShadcnui,
+  SiWordpress,
+  SiSentry,
+  SiPusher,
+  SiRailway
 } from "react-icons/si";
 import { FaMicrosoft } from "react-icons/fa";
 import { TbBrandReactNative } from "react-icons/tb";
@@ -68,6 +73,10 @@ export const JestLogo = (props: React.SVGProps<SVGSVGElement>) => {
 
 export const CypressLogo = (props: React.SVGProps<SVGSVGElement>) => {
   return <SiCypress {...props} />;
+};
+
+export const VitestLogo = (props: React.SVGProps<SVGSVGElement>) => {
+  return <SiVitest {...props} />;
 };
 
 export const JavascriptLogo = (props: React.SVGProps<SVGSVGElement>) => {
@@ -165,4 +174,20 @@ export const RedisLogo = (props: React.SVGProps<SVGSVGElement>) => {
 
 export const ShadcnLogo = (props: React.SVGProps<SVGSVGElement>) => {
   return <SiShadcnui {...props} />;
+};
+
+export const WordPressLogo = (props: React.SVGProps<SVGSVGElement>) => {
+  return <SiWordpress {...props} />;
+};
+
+export const SentryLogo = (props: React.SVGProps<SVGSVGElement>) => {
+  return <SiSentry {...props} />;
+};
+
+export const PusherLogo = (props: React.SVGProps<SVGSVGElement>) => {
+  return <SiPusher {...props} />;
+};
+
+export const RailwayLogo = (props: React.SVGProps<SVGSVGElement>) => {
+  return <SiRailway {...props} />;
 };

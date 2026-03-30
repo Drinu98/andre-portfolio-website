@@ -8,6 +8,7 @@ import {
   GraphQLLogo,
   JestLogo,
   CypressLogo,
+  VitestLogo,
   JavascriptLogo,
   AzureLogo,
   WebRTCLogo,
@@ -32,6 +33,10 @@ import {
   UpstashLogo,
   RedisLogo,
   ShadcnLogo,
+  WordPressLogo,
+  SentryLogo,
+  PusherLogo,
+  RailwayLogo,
 } from "@/icons/stack";
 import { IconCode } from "@tabler/icons-react";
 import React from "react";
@@ -51,6 +56,7 @@ export const getLogoForTechnology = (technology: string) => {
     GraphQL: <GraphQLLogo className="h-4 w-4 shrink-0" />,
     Jest: <JestLogo className="h-4 w-4 shrink-0" />,
     Cypress: <CypressLogo className="h-4 w-4 shrink-0" />,
+    Vitest: <VitestLogo className="h-4 w-4 shrink-0" />,
     JavaScript: <JavascriptLogo className="h-4 w-4 shrink-0" />,
     Azure: <AzureLogo className="h-4 w-4 shrink-0" />,
     WebRTC: <WebRTCLogo className="h-4 w-4 shrink-0" />,
@@ -75,6 +81,10 @@ export const getLogoForTechnology = (technology: string) => {
     Upstash: <UpstashLogo className="h-4 w-4 shrink-0" />,
     Redis: <RedisLogo className="h-4 w-4 shrink-0" />,
     "Shadcn/ui": <ShadcnLogo className="h-4 w-4 shrink-0" />,
+    WordPress: <WordPressLogo className="h-4 w-4 shrink-0" />,
+    Sentry: <SentryLogo className="h-4 w-4 shrink-0" />,
+    Pusher: <PusherLogo className="h-4 w-4 shrink-0" />,
+    Railway: <RailwayLogo className="h-4 w-4 shrink-0" />,
   };
 
   return (
@@ -97,6 +107,7 @@ export const getLargeLogoForTechnology = (technology: string) => {
     GraphQL: <GraphQLLogo className="h-6 w-6 shrink-0" />,
     Jest: <JestLogo className="h-6 w-6 shrink-0" />,
     Cypress: <CypressLogo className="h-6 w-6 shrink-0" />,
+    Vitest: <VitestLogo className="h-6 w-6 shrink-0" />,
     JavaScript: <JavascriptLogo className="h-6 w-6 shrink-0" />,
     Azure: <AzureLogo className="h-6 w-6 shrink-0" />,
     WebRTC: <WebRTCLogo className="h-6 w-6 shrink-0" />,
@@ -121,6 +132,10 @@ export const getLargeLogoForTechnology = (technology: string) => {
     Upstash: <UpstashLogo className="h-6 w-6 shrink-0" />,
     Redis: <RedisLogo className="h-6 w-6 shrink-0" />,
     "Shadcn/ui": <ShadcnLogo className="h-6 w-6 shrink-0" />,
+    WordPress: <WordPressLogo className="h-6 w-6 shrink-0" />,
+    Sentry: <SentryLogo className="h-6 w-6 shrink-0" />,
+    Pusher: <PusherLogo className="h-6 w-6 shrink-0" />,
+    Railway: <RailwayLogo className="h-6 w-6 shrink-0" />,
   };
 
   return (

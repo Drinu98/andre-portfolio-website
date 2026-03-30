@@ -12,19 +12,54 @@ import { Subheading } from "@/components/subheading";
 import { Testimonials } from "@/components/testimonials";
 import { experience } from "@/constants/experience";
 import { projects } from "@/constants/projects";
+import { siteConfig } from "@/lib/site";
 
 export default function Home() {
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebSite",
+        "@id": `${siteConfig.url.toString()}#website`,
+        url: siteConfig.url.toString(),
+        name: siteConfig.title,
+        description: siteConfig.description,
+        inLanguage: "en",
+      },
+      {
+        "@type": "Person",
+        "@id": `${siteConfig.url.toString()}#person`,
+        name: siteConfig.name,
+        url: siteConfig.url.toString(),
+        jobTitle: "Self-employed Full-Stack Developer",
+        description: siteConfig.description,
+        knowsAbout: [
+          "UI/UX Design",
+          "Full-stack development",
+          "Web development",
+          "Mobile applications",
+          "Backend systems",
+          "Deployment",
+        ],
+      },
+    ],
+  };
+
   return (
     <div className="flex min-h-screen items-start justify-start">
       <Container className="min-h-screen px-4 md:px-8 md:pt-20 md:pb-10">
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
         <Scales />
         <div className="flex flex-col sm:flex-row sm:items-center">
           <Heading>Andre Galea</Heading>
           <Flipper />
         </div>
         <Subheading>
-          They call me Andre. What the hell kind of a name is Soap? I'm a
-          software engineer with an eye for design.
+          I’m a self‑employed full‑stack developer who designs and builds
+          end‑to‑end products - from UI/UX to backend and deployment.
         </Subheading>
         
         <div className="px-4 pt-4 mb-4">
@@ -52,9 +87,9 @@ export default function Home() {
           <Experiences experiences={experience} />
         </section>
         
-        <section id="testimonials">
+        {/* <section id="testimonials">
           <Testimonials />
-        </section>
+        </section> */}
         
         <section id="contact">
           <div className="my-4 px-4 py-6">

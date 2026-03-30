@@ -7,6 +7,7 @@ import { Footer } from "@/components/navbar/footer";
 import { Toaster } from "sonner";
 import { ThemeProvider } from "next-themes";
 import { BackToTop } from "@/components/back-to-top";
+import { siteConfig } from "@/lib/site";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -14,8 +15,44 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Andre Galea's Portfolio",
-  description: "Andre Galea Portfolio",
+  metadataBase: siteConfig.url,
+  title: {
+    default: siteConfig.title,
+    template: `%s | ${siteConfig.title}`,
+  },
+  description: siteConfig.description,
+  applicationName: siteConfig.title,
+  authors: [{ name: siteConfig.name, url: siteConfig.url }],
+  creator: siteConfig.name,
+  publisher: siteConfig.name,
+  alternates: {
+    canonical: "/",
+  },
+  openGraph: {
+    type: "website",
+    locale: "en_US",
+    url: "/",
+    siteName: siteConfig.title,
+    title: siteConfig.title,
+    description: siteConfig.description,
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: siteConfig.title,
+    description: siteConfig.description,
+    creator: siteConfig.twitterHandle ?? undefined,
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+      "max-video-preview": -1,
+    },
+  },
 };
 
 export default function RootLayout({

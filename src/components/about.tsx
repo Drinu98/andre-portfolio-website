@@ -25,9 +25,9 @@ export const About = () => {
             viewport={{ once: true }}
           >
             <p className="text-sm leading-relaxed text-neutral-600 dark:text-neutral-300 md:text-base">
-              I'm a passionate software engineer with a love for creating elegant solutions 
-              to complex problems. With expertise spanning full-stack development, I enjoy 
-              building user-centric applications that make a real difference in people's lives.
+              I’m a self‑employed full‑stack developer who helps clients take ideas from
+              concept to launch. I design the UI/UX, build the frontend and backend, and
+              ship reliable systems that are easy to maintain.
             </p>
           </motion.div>
 
@@ -69,10 +69,9 @@ export const About = () => {
             viewport={{ once: true }}
           >
             <p className="text-sm leading-relaxed text-neutral-600 dark:text-neutral-300 md:text-base">
-              When I'm not coding, you'll find me exploring new technologies, contributing 
-              to open-source projects, or sharing knowledge with the developer community. 
-              I believe in continuous learning and staying curious about the ever-evolving 
-              world of technology.
+              I focus on clean architecture, performance, and great user experience - with
+              practical deployment workflows so products don’t just look good, they run
+              smoothly in production.
             </p>
           </motion.div>
 

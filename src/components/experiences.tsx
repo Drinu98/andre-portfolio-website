@@ -23,9 +23,9 @@ export const Experiences = ({
           <div key={experience.company}>
             <div className="flex flex-col justify-between md:flex-row md:items-start">
               <div className="max-w-[80%]">
-                <h2 className="font-medium text-neutral-900 dark:text-neutral-100">
+                <h3 className="font-medium text-neutral-900 dark:text-neutral-100">
                   {experience.company}
-                </h2>
+                </h3>
                 <div className="flex flex-col gap-2 py-2 sm:flex-row sm:items-center">
                   <p className="text-sm text-neutral-800 dark:text-neutral-200">
                     {experience.designation}
@@ -35,9 +35,17 @@ export const Experiences = ({
                   </p>
                 </div>
 
-                <p className="text-sm text-neutral-500">
-                  {experience.description}
-                </p>
+                {Array.isArray(experience.description) ? (
+                  <ul className="ml-4 list-disc space-y-1 text-sm text-neutral-500">
+                    {experience.description.map((item, idx) => (
+                      <li key={`${experience.company}-desc-${idx}`}>{item}</li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-sm text-neutral-500">
+                    {experience.description}
+                  </p>
+                )}
                 <div className="mt-4 flex flex-wrap gap-2">
                   <LayoutGroup>
                     {experience.stack.map((technology, idx) => (
