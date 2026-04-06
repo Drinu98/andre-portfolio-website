@@ -1,10 +1,11 @@
 "use client";
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import { toast } from "sonner";
-import { Turnstile } from "@marsidev/react-turnstile";
+import { Turnstile, type TurnstileInstance } from "@marsidev/react-turnstile";
 import { contactFormSchema } from "@/lib/contact-schema";
 
 export const ContactForm = () => {
+  const turnstileRef = useRef<TurnstileInstance>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -48,6 +49,8 @@ export const ContactForm = () => {
       toast.error("Network error. Please try again.");
     } finally {
       setIsSubmitting(false);
+      setTurnstileToken("");
+      turnstileRef.current?.reset();
     }
   };
 
@@ -125,6 +128,7 @@ export const ContactForm = () => {
         </div>
         <div className="pt-1">
           <Turnstile
+            ref={turnstileRef}
             siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? ""}
             onSuccess={(token) => setTurnstileToken(token)}
             onExpire={() => setTurnstileToken("")}

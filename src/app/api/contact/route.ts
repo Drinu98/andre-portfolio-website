@@ -120,6 +120,7 @@ export async function POST(request: Request) {
     });
 
     if (result.error) {
+      console.error("Resend error:", JSON.stringify(result.error));
       return NextResponse.json(
         { ok: false, error: "Email send failed", details: result.error },
         { status: 502 },
@@ -128,6 +129,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ ok: true });
   } catch (err) {
+    console.error("Contact API error:", err);
     const message = err instanceof Error ? err.message : "Unknown error";
     return NextResponse.json({ ok: false, error: message }, { status: 500 });
   }
