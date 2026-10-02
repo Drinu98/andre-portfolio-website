@@ -1,4 +1,5 @@
 import { ImageResponse } from "next/og";
+import { BlockMark, brand } from "@/lib/brand-image";
 import { siteConfig } from "@/lib/site";
 
 export const runtime = "edge";
@@ -15,60 +16,54 @@ export default function OpenGraphImage() {
           height: "100%",
           display: "flex",
           flexDirection: "column",
-          justifyContent: "center",
+          justifyContent: "space-between",
           padding: 72,
-          background: "#0a0a0a",
-          color: "#ffffff",
+          background: brand.paper,
+          color: brand.ink,
           fontFamily:
-            'ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji"',
-          position: "relative",
+            "ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial",
         }}
       >
-        <div
-          style={{
-            position: "absolute",
-            inset: 0,
-            background:
-              "radial-gradient(800px 400px at 20% 30%, rgba(59, 130, 246, 0.35), transparent 60%), radial-gradient(700px 420px at 75% 35%, rgba(168, 85, 247, 0.30), transparent 60%), radial-gradient(600px 420px at 40% 80%, rgba(34, 197, 94, 0.18), transparent 65%)",
-          }}
-        />
+        <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
+          <BlockMark size={44} />
+          <div style={{ fontSize: 30, fontWeight: 600 }}>{siteConfig.name}</div>
+        </div>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 22 }}>
-          <div style={{ fontSize: 64, fontWeight: 800, letterSpacing: -1 }}>
-            {siteConfig.name}
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              fontSize: 84,
+              fontWeight: 800,
+              letterSpacing: -3,
+              lineHeight: 1,
+            }}
+          >
+            <div>Concept to launch,</div>
+            <div style={{ color: brand.accent }}>end to end.</div>
           </div>
-          <div style={{ fontSize: 30, opacity: 0.92, lineHeight: 1.2 }}>
+          <div style={{ fontSize: 30, color: brand.muted, lineHeight: 1.25 }}>
             Self‑employed full‑stack developer building end‑to‑end systems for
             clients.
-          </div>
-          <div style={{ fontSize: 22, opacity: 0.82, lineHeight: 1.3 }}>
-            Websites + mobile apps — UI/UX → backend → deployment
           </div>
         </div>
 
         <div
           style={{
-            marginTop: 44,
             display: "flex",
-            alignItems: "center",
-            gap: 10,
-            fontSize: 18,
-            opacity: 0.75,
+            justifyContent: "space-between",
+            paddingTop: 24,
+            borderTop: `1px solid ${brand.line}`,
+            fontSize: 22,
+            color: brand.muted,
           }}
         >
-          <div
-            style={{
-              width: 10,
-              height: 10,
-              borderRadius: 999,
-              background: "rgba(255,255,255,0.85)",
-            }}
-          />
-          <div>{siteConfig.url.host}</div>
+          <div>UI/UX → Frontend → Backend → Deployment</div>
+          <div style={{ color: brand.accent }}>{siteConfig.url.host}</div>
         </div>
       </div>
     ),
     size,
   );
 }
-

@@ -25,10 +25,6 @@ export type Formation = {
   tilt: Quaternion;
   /** Continuous yaw in rad/s. Zero means the sculpture only sways. */
   spin: number;
-  /** Half-angle of the idle sway, used when the sculpture does not spin. */
-  sway: number;
-  /** Half-width and half-height the formation needs on screen, in units. */
-  extent: [number, number];
   /** Labels either stay up or only show for the focused group. */
   labels: "always" | "focus";
   /** Anchors ignore yaw, so labels hold still while the blocks turn. */
@@ -192,9 +188,7 @@ const buildAssembly = (n: number): Formation => {
     groups,
     tilt: tiltOf(0.46, -0.72, 0),
     spin: 0,
-    sway: 0.3,
-    extent: [3.3, 3.3],
-    labels: "focus",
+    labels: "always",
     fixedAnchors: false,
     guides: new Float32Array(guides),
     tick: (time) => {
@@ -385,8 +379,6 @@ const buildIsland = (n: number): Formation => {
     ],
     tilt: tiltOf(0.82, -0.28, 0),
     spin: 0,
-    sway: 0.16,
-    extent: [3.9, 2.9],
     labels: "always",
     fixedAnchors: false,
     guides: new Float32Array(guides),
@@ -519,9 +511,7 @@ const buildOrbits = (n: number): Formation => {
     groups,
     tilt: tiltOf(0.5, 0, 0.08),
     spin: 0,
-    sway: 0.3,
-    extent: [3.8, 2.6],
-    labels: "focus",
+    labels: "always",
     fixedAnchors: false,
     guides: new Float32Array(guides),
     tick,
@@ -540,7 +530,7 @@ const hostOf = (href: string) => {
   }
 };
 
-const buildSkyline = (n: number, wide: boolean): Formation => {
+const buildSkyline = (n: number): Formation => {
   const rng = mulberry32(41);
   const f = blank(n);
   const order = shuffled(n, rng);
@@ -553,10 +543,8 @@ const buildSkyline = (n: number, wide: boolean): Formation => {
     n,
     projects.map((p) => 3 + p.stack.length),
   );
-  // Wide panels get one long street; narrow ones get two rows.
-  const rows = wide ? 1 : 2;
-  const cols = Math.ceil(projects.length / rows);
-  const pitchX = wide ? 2 : 1.5;
+  const cols = Math.ceil(projects.length / 2);
+  const pitchX = 1.5;
   const pitchZ = 1.7;
 
   const groups: FormationGroup[] = [];
@@ -565,11 +553,8 @@ const buildSkyline = (n: number, wide: boolean): Formation => {
   projects.forEach((project, pi) => {
     const row = Math.floor(pi / cols);
     const col = pi % cols;
-    const cx =
-      (col - (cols - 1) / 2) * pitchX +
-      (rows === 1 ? 0 : row === 0 ? -0.3 : 0.3);
-    const cz =
-      rows === 1 ? (col % 2 === 0 ? -0.28 : 0.28) : (row - 0.5) * pitchZ;
+    const cx = (col - (cols - 1) / 2) * pitchX + (row === 0 ? -0.3 : 0.3);
+    const cz = (row === 0 ? -0.5 : 0.5) * pitchZ;
     const levels = Math.ceil(shares[pi] / perLevel);
 
     for (let b = 0; b < shares[pi]; b++, k++) {
@@ -602,7 +587,7 @@ const buildSkyline = (n: number, wide: boolean): Formation => {
   });
 
   const halfX = (cols * pitchX) / 2 + 0.5;
-  const halfZ = rows === 1 ? 0.95 : pitchZ + 0.3;
+  const halfZ = pitchZ + 0.3;
   guides.push(-halfX, ground, -halfZ, halfX, ground, -halfZ);
   guides.push(halfX, ground, -halfZ, halfX, ground, halfZ);
   guides.push(halfX, ground, halfZ, -halfX, ground, halfZ);
@@ -613,10 +598,8 @@ const buildSkyline = (n: number, wide: boolean): Formation => {
     id: "projects",
     ...f,
     groups,
-    tilt: wide ? tiltOf(0.34, -0.22, 0) : tiltOf(0.5, -0.5, 0),
+    tilt: tiltOf(0.5, -0.5, 0),
     spin: 0,
-    sway: wide ? 0.12 : 0.3,
-    extent: wide ? [8.3, 2.4] : [3.8, 2.7],
     labels: "focus",
     fixedAnchors: false,
     guides: new Float32Array(guides),
@@ -727,7 +710,7 @@ const buildHelix = (n: number): Formation => {
       key: focusKey.job(j.job.company),
       label: j.job.company,
       sub: `${yearOf(j.job.startDate)} to ${yearOf(j.job.endDate)}`,
-      anchor: [0, bottom + t1 * rise + 0.25, 0],
+      anchor: [radius + 0.55, bottom + ((t0 + t1) / 2) * rise, 0],
     });
   });
 
@@ -745,9 +728,7 @@ const buildHelix = (n: number): Formation => {
     groups,
     tilt: tiltOf(0.2, 0, -0.1),
     spin: 0.16,
-    sway: 0,
-    extent: [2.3, 3.3],
-    labels: "focus",
+    labels: "always",
     fixedAnchors: true,
     guides: new Float32Array(guides),
   };
@@ -814,8 +795,6 @@ const buildSignal = (n: number): SignalFormation => {
     groups: [],
     tilt: tiltOf(0.92, 0.3, 0),
     spin: 0.05,
-    sway: 0,
-    extent: [3.8, 2.7],
     labels: "focus",
     fixedAnchors: true,
     guides: new Float32Array(guides),
@@ -826,13 +805,13 @@ const buildSignal = (n: number): SignalFormation => {
   };
 };
 
-export const buildFormations = (n: number, wide: boolean) => {
+export const buildFormations = (n: number) => {
   const signal = buildSignal(n);
   return {
     home: buildAssembly(n),
     about: buildIsland(n),
     skills: buildOrbits(n),
-    projects: buildSkyline(n, wide),
+    projects: buildSkyline(n),
     experience: buildHelix(n),
     contact: signal as Formation,
     pulse: signal.pulse,

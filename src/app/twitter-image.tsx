@@ -1,4 +1,5 @@
 import { ImageResponse } from "next/og";
+import { BlockMark, brand } from "@/lib/brand-image";
 import { siteConfig } from "@/lib/site";
 
 export const runtime = "edge";
@@ -15,37 +16,51 @@ export default function TwitterImage() {
           height: "100%",
           display: "flex",
           flexDirection: "column",
-          justifyContent: "center",
+          justifyContent: "space-between",
           padding: 72,
-          background: "#0a0a0a",
-          color: "#ffffff",
+          background: brand.paper,
+          color: brand.ink,
           fontFamily:
-            'ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji"',
-          position: "relative",
+            "ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial",
         }}
       >
-        <div
-          style={{
-            position: "absolute",
-            inset: 0,
-            background:
-              "radial-gradient(820px 420px at 25% 40%, rgba(59, 130, 246, 0.35), transparent 60%), radial-gradient(700px 440px at 80% 40%, rgba(168, 85, 247, 0.30), transparent 60%)",
-          }}
-        />
+        <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
+          <BlockMark size={44} />
+          <div style={{ fontSize: 30, fontWeight: 600 }}>{siteConfig.name}</div>
+        </div>
+
         <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-          <div style={{ fontSize: 60, fontWeight: 800, letterSpacing: -1 }}>
-            {siteConfig.name}
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              fontSize: 80,
+              fontWeight: 800,
+              letterSpacing: -3,
+              lineHeight: 1,
+            }}
+          >
+            <div>Concept to launch,</div>
+            <div style={{ color: brand.accent }}>end to end.</div>
           </div>
-          <div style={{ fontSize: 28, opacity: 0.92, lineHeight: 1.2 }}>
+          <div style={{ fontSize: 28, color: brand.muted, lineHeight: 1.25 }}>
             Websites + mobile apps — end‑to‑end delivery
           </div>
-          <div style={{ fontSize: 20, opacity: 0.82, lineHeight: 1.3 }}>
-            UI/UX • Full‑stack • Deployment
-          </div>
+        </div>
+
+        <div
+          style={{
+            display: "flex",
+            paddingTop: 24,
+            borderTop: `1px solid ${brand.line}`,
+            fontSize: 22,
+            color: brand.accent,
+          }}
+        >
+          UI/UX • Full‑stack • Deployment
         </div>
       </div>
     ),
     size,
   );
 }
-

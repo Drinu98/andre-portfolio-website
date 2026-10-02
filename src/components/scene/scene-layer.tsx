@@ -1,22 +1,24 @@
 "use client";
-import React, { useEffect, useRef } from "react";
-import { stations, type StationId } from "@/lib/stations";
+import React, { useEffect, useRef, useState } from "react";
+import { figureNumber, stations, type StationId } from "@/lib/stations";
 import type { Sculpture, SculptureHit } from "./sculpture";
+
+const DESKTOP = "(min-width: 960px)";
 
 /** The window event the contact form fires once a message is sent. */
 export const PULSE_EVENT = "sculpture:pulse";
 
 /**
- * Mounts the sculpture as a click-through layer over the page and keeps it in
- * step with the DOM. Each section has a `[data-stage]` panel; the piece docks
- * in whichever panel was scrolled to last, and flies across the page to the
- * next one. Anything carrying `data-focus` lights its blocks, and is lit back
- * when the blocks are hovered.
+ * Mounts the sculpture behind the page and keeps it in step with the DOM:
+ * scroll position picks the formation, and anything carrying `data-focus`
+ * lights its blocks (and is lit back when the blocks are hovered).
  */
 export const SceneLayer = () => {
   const hostRef = useRef<HTMLDivElement>(null);
   const labelsRef = useRef<HTMLDivElement>(null);
   const tooltipRef = useRef<HTMLDivElement>(null);
+  const [station, setStation] = useState<StationId>("home");
+  const [interactive, setInteractive] = useState(false);
 
   useEffect(() => {
     const host = hostRef.current;
@@ -25,7 +27,7 @@ export const SceneLayer = () => {
     if (!host || !labels || !tooltip) return;
 
     const root = document.documentElement;
-    const wide = window.matchMedia("(min-width: 768px)").matches;
+    const desktop = window.matchMedia(DESKTOP);
     const reducedMotion = window.matchMedia(
       "(prefers-reduced-motion: reduce)",
     ).matches;
@@ -34,9 +36,6 @@ export const SceneLayer = () => {
     let cancelled = false;
     let frame = 0;
     let current: StationId = "home";
-    let dragStage: HTMLElement | null = null;
-    let marked = false;
-    let ghostTimer = 0;
 
     // Three sources of focus, in priority order.
     let domFocus: string | null = null;
@@ -45,70 +44,64 @@ export const SceneLayer = () => {
     const applyFocus = () =>
       sculpture?.setFocus(domFocus ?? sceneFocus ?? scrollFocus);
 
-    const stageEl = (id: StationId) =>
-      document.querySelector<HTMLElement>(`[data-stage="${id}"]`);
+    const sections = stations.map(({ id }) => ({
+      id,
+      el: document.getElementById(id),
+    }));
+    const column = document.querySelector<HTMLElement>("[data-col]");
     const autoTargets = Array.from(
       document.querySelectorAll<HTMLElement>("[data-focus-auto]"),
     );
 
     const measure = () => {
       frame = 0;
+      const width = window.innerWidth;
       const height = window.innerHeight;
 
-      // The live piece docks in whichever visible panel is nearest the middle
-      // of the screen. The current panel gets a head start so it does not
-      // flicker between two that are equally close.
-      let next = current;
-      let nearest = Infinity;
-      for (const { id } of stations) {
-        const rect = stageEl(id)?.getBoundingClientRect();
-        if (!rect || rect.height === 0) continue;
-        if (rect.bottom < 0 || rect.top > height) continue;
-        const distance =
-          Math.abs(rect.top + rect.height / 2 - height / 2) -
-          (id === current ? 80 : 0);
-        if (distance < nearest) {
-          nearest = distance;
-          next = id;
-        }
-      }
-      if (next !== current || !marked) {
+      let next: StationId = "home";
+      for (const { id, el } of sections)
+        if (el && el.getBoundingClientRect().top <= height * 0.5) next = id;
+      if (next !== current) {
         current = next;
-        marked = Boolean(sculpture);
-        for (const { id } of stations)
-          stageEl(id)?.toggleAttribute(
-            "data-live",
-            Boolean(sculpture) && id === current,
-          );
+        root.dataset.station = next;
+        setStation(next);
       }
       sculpture?.setStation(current);
 
-      const line = height * 0.45;
+      const line = height * 0.42;
       const under = autoTargets.find((el) => {
         const rect = el.getBoundingClientRect();
         return rect.top <= line && rect.bottom >= line;
       });
       scrollFocus = under?.dataset.focus ?? null;
       applyFocus();
-      sculpture?.invalidate();
+
+      if (desktop.matches) {
+        const left = (column?.getBoundingClientRect().right ?? width / 2) + 56;
+        const right = width - 84;
+        sculpture?.setFrame({
+          centerX: (left + right) / 2,
+          centerY: height * 0.5 + 12,
+          fitWidth: right - left,
+          fitHeight: height * 0.76,
+        });
+        host.style.removeProperty("--scene-fade");
+      } else {
+        // On small screens the piece leads the hero, then fades back so the
+        // text that scrolls over it stays readable.
+        const lead = current === "home";
+        const progress = Math.min(1, window.scrollY / (height * 0.34));
+        sculpture?.setFrame({
+          centerX: width / 2,
+          centerY: lead ? height * 0.3 : height * 0.5,
+          fitWidth: width * 0.94,
+          fitHeight: lead ? height * 0.4 : height * 0.62,
+        });
+        host.style.setProperty("--scene-fade", String(1 - progress * 0.86));
+      }
     };
     const schedule = () => {
       if (!frame) frame = requestAnimationFrame(measure);
-    };
-
-    // Panels keep a faint still of their formation for when the piece is away.
-    const paintGhosts = () => {
-      if (!sculpture) return;
-      const ghosts = sculpture.renderGhosts();
-      for (const { id } of stations) {
-        const url = ghosts[id];
-        stageEl(id)?.style.setProperty("--ghost", url ? `url(${url})` : "none");
-      }
-    };
-    const onResize = () => {
-      schedule();
-      window.clearTimeout(ghostTimer);
-      ghostTimer = window.setTimeout(paintGhosts, 250);
     };
 
     const light = (key: string | null) => {
@@ -123,14 +116,13 @@ export const SceneLayer = () => {
       sceneFocus = hit?.key ?? null;
       light(sceneFocus);
       applyFocus();
-      root.toggleAttribute("data-scene-hit", Boolean(hit));
       tooltip.dataset.visible = hit ? "true" : "false";
       if (!hit) return;
       const [title, sub] = tooltip.children as unknown as HTMLElement[];
       title.textContent = hit.label;
       sub.textContent = hit.sub ?? "";
-      const flip = hit.x > window.innerWidth - 260;
-      tooltip.style.transform = `translate3d(${hit.x + (flip ? -16 : 16)}px, ${hit.y + 16}px, 0) translateX(${flip ? "-100%" : "0"})`;
+      const flip = hit.x > window.innerWidth - 300;
+      tooltip.style.transform = `translate3d(${hit.x + (flip ? -18 : 18)}px, ${hit.y + 18}px, 0) translateX(${flip ? "-100%" : "0"})`;
     };
 
     const onSelect = (key: string) => {
@@ -143,42 +135,9 @@ export const SceneLayer = () => {
       });
     };
 
-    // The canvas ignores the pointer, so its panel stands in for it.
-    const activeStage = (target: EventTarget | null) => {
-      const stage = (target as Element | null)?.closest?.<HTMLElement>(
-        "[data-stage]",
-      );
-      return stage?.dataset.stage === current ? stage : null;
-    };
     const focusOf = (target: EventTarget | null) =>
       (target as Element | null)?.closest?.<HTMLElement>("[data-focus]")
         ?.dataset.focus ?? null;
-
-    const onPointerDown = (event: PointerEvent) => {
-      if (event.pointerType === "touch" || event.button !== 0) return;
-      const stage = activeStage(event.target);
-      if (!stage || !sculpture) return;
-      event.preventDefault();
-      dragStage = stage;
-      stage.setPointerCapture(event.pointerId);
-      root.setAttribute("data-scene-drag", "");
-      sculpture.startDrag();
-    };
-    const onPointerMove = (event: PointerEvent) => {
-      if (event.pointerType === "touch" || !sculpture) return;
-      if (dragStage) return sculpture.drag(event.movementX, event.movementY);
-      if (activeStage(event.target))
-        sculpture.hoverAt(event.clientX, event.clientY);
-      else sculpture.hoverEnd();
-    };
-    const onPointerUp = (event: PointerEvent) => {
-      if (!dragStage) return;
-      if (dragStage.hasPointerCapture(event.pointerId))
-        dragStage.releasePointerCapture(event.pointerId);
-      dragStage = null;
-      root.removeAttribute("data-scene-drag");
-      sculpture?.endDrag();
-    };
     const onPointerOver = (event: PointerEvent) => {
       if (event.pointerType === "touch") return;
       domFocus = focusOf(event.target);
@@ -194,25 +153,22 @@ export const SceneLayer = () => {
     };
     const onPulse = () => sculpture?.pulse();
 
-    const themeObserver = new MutationObserver(() => {
-      sculpture?.setTheme();
-      paintGhosts();
-    });
+    const themeObserver = new MutationObserver(() => sculpture?.setTheme());
 
     import("./sculpture")
       .then(({ Sculpture }) => {
         if (cancelled) return;
+        const wide = desktop.matches;
         sculpture = new Sculpture(host, labels, {
-          count: wide ? 1200 : 700,
+          count: wide ? 1400 : 800,
           maxPixelRatio: wide ? 2 : 1.5,
           reducedMotion,
-          wide,
-          getStage: (id) => stageEl(id)?.getBoundingClientRect() ?? null,
+          interactive: wide,
           onHover,
           onSelect,
         });
         root.dataset.webgl = "ok";
-        paintGhosts();
+        setInteractive(wide);
         measure();
       })
       .catch(() => {
@@ -220,13 +176,11 @@ export const SceneLayer = () => {
         root.dataset.webgl = "none";
       });
 
+    root.dataset.station = current;
+    measure();
     window.addEventListener("scroll", schedule, { passive: true });
-    window.addEventListener("resize", onResize);
+    window.addEventListener("resize", schedule);
     window.addEventListener(PULSE_EVENT, onPulse);
-    document.addEventListener("pointerdown", onPointerDown);
-    document.addEventListener("pointermove", onPointerMove);
-    document.addEventListener("pointerup", onPointerUp);
-    document.addEventListener("pointercancel", onPointerUp);
     document.addEventListener("pointerover", onPointerOver);
     document.addEventListener("focusin", onFocusIn);
     document.addEventListener("focusout", onFocusOut);
@@ -239,13 +193,8 @@ export const SceneLayer = () => {
       cancelled = true;
       cancelAnimationFrame(frame);
       window.removeEventListener("scroll", schedule);
-      window.removeEventListener("resize", onResize);
-      window.clearTimeout(ghostTimer);
+      window.removeEventListener("resize", schedule);
       window.removeEventListener(PULSE_EVENT, onPulse);
-      document.removeEventListener("pointerdown", onPointerDown);
-      document.removeEventListener("pointermove", onPointerMove);
-      document.removeEventListener("pointerup", onPointerUp);
-      document.removeEventListener("pointercancel", onPointerUp);
       document.removeEventListener("pointerover", onPointerOver);
       document.removeEventListener("focusin", onFocusIn);
       document.removeEventListener("focusout", onFocusOut);
@@ -254,18 +203,54 @@ export const SceneLayer = () => {
     };
   }, []);
 
+  const index = stations.findIndex((s) => s.id === station);
+  const active = stations[index];
+
   return (
     <>
       <div ref={hostRef} className="scene" aria-hidden="true" />
+      <div className="scene-scrim" aria-hidden="true" />
       <div ref={labelsRef} className="scene-labels" aria-hidden="true" />
+      <div className="marks" aria-hidden="true">
+        <i />
+        <i />
+        <i />
+      </div>
+
+      <div key={active.id} className="figure" aria-hidden="true">
+        <span className="mono figure__number">Fig. {figureNumber(index)}</span>
+        <span className="figure__name">{active.figure}</span>
+        <span className="figure__caption">{active.caption}</span>
+        {interactive && (
+          <span className="mono figure__hint">
+            Drag to turn · Hover to inspect
+          </span>
+        )}
+      </div>
+
+      <nav className="rail" aria-label="Sections">
+        {stations.map((s, i) => (
+          <a
+            key={s.id}
+            href={`#${s.id}`}
+            className="mono"
+            aria-current={s.id === station ? "true" : undefined}
+          >
+            <span>{s.figure}</span>
+            {figureNumber(i)}
+          </a>
+        ))}
+      </nav>
+
       <div
         ref={tooltipRef}
-        className="scene-tooltip"
+        className="tooltip mono"
         data-visible="false"
         aria-hidden="true"
       >
         <strong />
         <span />
+        <span>Click to open</span>
       </div>
     </>
   );

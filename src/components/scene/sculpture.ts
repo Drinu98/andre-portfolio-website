@@ -38,25 +38,29 @@ export type SculptureHit = {
   y: number;
 };
 
+export type SculptureFrame = {
+  /** Where the sculpture's centre sits, in viewport pixels. */
+  centerX: number;
+  centerY: number;
+  /** The box it has to fit inside, in viewport pixels. */
+  fitWidth: number;
+  fitHeight: number;
+};
+
 type Options = {
   count: number;
   maxPixelRatio: number;
   reducedMotion: boolean;
-  /** Wide layouts get the single-row skyline. */
-  wide: boolean;
-  /** The on-page panel a station's formation should sit inside. */
-  getStage: (id: StationId) => DOMRect | null;
+  interactive: boolean;
   onHover: (hit: SculptureHit | null) => void;
   onSelect: (key: string) => void;
 };
 
-/** Where the sculpture sits on screen: centre in px, and px per scene unit. */
-type Placement = { x: number; y: number; scale: number };
-
 const FOV = 30;
+const FIT_RADIUS = 3.9;
 const TRAVEL = 1.25;
 const STAGGER = 0.55;
-const STAGE_FILL = 0.92;
+const LABEL_GUTTER = 76;
 const Y_AXIS = new Vector3(0, 1, 0);
 
 const easeInOut = (t: number) =>
@@ -72,15 +76,12 @@ const cssColor = (name: string, fallback: string) => {
 /**
  * One instanced mesh of boxes that is rearranged per station. Nothing is added
  * or removed between stations: every block travels to its slot in the next
- * formation, and the whole piece moves to that station's panel on the page.
- *
- * The canvas is a fixed, click-through layer above the content, so the blocks
- * can cross the page between panels. Pointer input is fed in by the caller.
+ * formation, which is the whole idea of the piece.
  */
 export class Sculpture {
   private readonly renderer: WebGLRenderer;
   private readonly scene = new Scene();
-  private readonly camera = new PerspectiveCamera(FOV, 1, 0.1, 400);
+  private readonly camera = new PerspectiveCamera(FOV, 1, 0.1, 120);
   private readonly rig = new Group();
   private readonly mesh: InstancedMesh;
   private readonly geometry = new BoxGeometry(1, 1, 1);
@@ -127,7 +128,6 @@ export class Sculpture {
   private paused = false;
   private disposed = false;
   private dirty = true;
-  private blank = false;
 
   private readonly tiltFrom = new Quaternion();
   private readonly tilt = new Quaternion();
@@ -143,22 +143,24 @@ export class Sculpture {
   private dragMoved = 0;
   private readonly pointer = new Vector2();
   private readonly pointerSmooth = new Vector2();
-  private readonly hoverPoint = new Vector2();
+  private readonly hoverAt = new Vector2();
   private readonly ndc = new Vector2();
   private hoverPending = false;
   private hoverKey: string | null = null;
 
   private width = 1;
   private height = 1;
-  private readonly placement: Placement = { x: 0, y: 0, scale: 40 };
-  // Where the piece was when the current trip began, pinned to the document
-  // so it keeps scrolling with the page while the blocks leave it.
-  private readonly departure: Placement = { x: 0, y: 0, scale: 40 };
-  private departureScroll = 0;
-  private readonly lastStage = new Map<StationId, Placement>();
+  private frame: SculptureFrame = {
+    centerX: 0,
+    centerY: 0,
+    fitWidth: 1,
+    fitHeight: 1,
+  };
+  private readonly shift = new Vector2();
+  private distance = 24;
+  private framed = false;
 
   private readonly accent = new Color();
-  private readonly accentAlt = new Color();
   private readonly dim = new Color();
   private readonly lo = new Color();
   private readonly hi = new Color();
@@ -166,7 +168,7 @@ export class Sculpture {
 
   constructor(
     private readonly host: HTMLElement,
-    labelHost: HTMLElement,
+    private readonly labelHost: HTMLElement,
     private readonly options: Options,
   ) {
     this.count = options.count;
@@ -184,7 +186,7 @@ export class Sculpture {
     this.renderer.domElement.className = "scene-canvas";
     host.appendChild(this.renderer.domElement);
 
-    const { pulse, ...formations } = buildFormations(n, options.wide);
+    const { pulse, ...formations } = buildFormations(n);
     this.formations = formations;
     this.pulseSignal = pulse;
 
@@ -214,8 +216,7 @@ export class Sculpture {
       this.fromQuat[i * 4 + 3] = 1;
       this.seed[i] = Math.random();
       this.tone[i] = Math.random();
-      const mark = Math.random();
-      this.marked[i] = mark < 0.03 ? 1 : mark < 0.055 ? 2 : 0;
+      this.marked[i] = Math.random() < 0.045 ? 1 : 0;
       const b = Math.random() * Math.PI * 2;
       const lift = 0.35 + Math.random() * 0.9;
       this.arc[i * 3] = Math.cos(b) * lift;
@@ -259,9 +260,10 @@ export class Sculpture {
       for (const group of this.formations[id].groups) {
         const el = document.createElement("span");
         el.className = "scene-label";
+        const dot = document.createElement("i");
         const name = document.createElement("b");
         name.textContent = group.label;
-        el.append(name);
+        el.append(dot, name);
         if (group.sub) {
           const sub = document.createElement("em");
           sub.textContent = group.sub;
@@ -285,20 +287,21 @@ export class Sculpture {
     this.resizeObserver = new ResizeObserver(this.resize);
     this.resizeObserver.observe(host);
     this.resize();
-    this.stageOf("home", this.departure);
-    this.departureScroll = window.scrollY;
 
     window.addEventListener("pointermove", this.onWindowPointer, {
       passive: true,
     });
     document.addEventListener("visibilitychange", this.onVisibility);
+    if (options.interactive) {
+      host.addEventListener("pointerdown", this.onPointerDown);
+      host.addEventListener("pointermove", this.onPointerMove);
+      host.addEventListener("pointerup", this.onPointerUp);
+      host.addEventListener("pointercancel", this.onPointerUp);
+      host.addEventListener("pointerleave", this.onPointerLeave);
+    }
 
     this.last = performance.now();
     this.raf = requestAnimationFrame(this.loop);
-  }
-
-  get currentStation() {
-    return this.station;
   }
 
   setStation(id: StationId) {
@@ -307,10 +310,6 @@ export class Sculpture {
     this.fromScl.set(this.curScl);
     this.fromQuat.set(this.curQuat);
     this.tiltFrom.copy(this.tilt);
-    this.departure.x = this.placement.x;
-    this.departure.y = this.placement.y;
-    this.departure.scale = this.placement.scale;
-    this.departureScroll = window.scrollY;
     this.station = id;
     this.travel = this.options.reducedMotion ? TRAVEL + STAGGER : 0;
     this.focusGroup = this.groupIndex(this.focus);
@@ -325,37 +324,38 @@ export class Sculpture {
     this.dirty = true;
   }
 
-  /** Marks the frame stale, for when layout or scroll position changed. */
-  invalidate() {
+  setFrame(frame: SculptureFrame) {
+    this.frame = frame;
     this.dirty = true;
   }
 
   /** Re-reads the palette from CSS so the scene follows the page theme. */
   setTheme() {
-    const style = getComputedStyle(document.documentElement);
-    const stage = cssColor("--stage-bg", "#fafafa");
-    this.lo.copy(cssColor("--block-lo", "#262626"));
-    this.hi.copy(cssColor("--block-hi", "#a3a3a3"));
-    this.accent.copy(cssColor("--block-accent", "#3b82f6"));
-    this.accentAlt.copy(cssColor("--block-accent-alt", "#a855f7"));
-    this.dim.copy(cssColor("--block-dim", "#e5e5e5"));
-    this.fog.color.copy(stage);
+    const paper = cssColor("--paper", "#e9e4d8");
+    this.lo.copy(cssColor("--block-lo", "#1e1d17"));
+    this.hi.copy(cssColor("--block-hi", "#8f8973"));
+    this.accent.copy(cssColor("--block-accent", "#f2440d"));
+    this.dim.copy(cssColor("--block-dim", "#d3cdbd"));
+    this.fog.color.copy(paper);
     this.sky.color.set(0xffffff);
-    this.sky.groundColor.copy(stage);
+    this.sky.groundColor.copy(paper);
     this.sky.intensity =
-      Number(style.getPropertyValue("--block-ambient")) || 1.6;
+      Number(
+        getComputedStyle(document.documentElement).getPropertyValue(
+          "--block-ambient",
+        ),
+      ) || 1.5;
     this.sun.intensity = 2.1;
 
     const c = new Color();
     for (let i = 0; i < this.count; i++) {
-      if (this.marked[i] === 1) c.copy(this.accent);
-      else if (this.marked[i] === 2) c.copy(this.accentAlt);
+      if (this.marked[i]) c.copy(this.accent);
       else c.copy(this.lo).lerp(this.hi, this.tone[i]);
       this.baseColor[i * 3] = c.r;
       this.baseColor[i * 3 + 1] = c.g;
       this.baseColor[i * 3 + 2] = c.b;
     }
-    const line = cssColor("--block-line", "#a3a3a3");
+    const line = cssColor("--ink", "#16150f");
     for (const lines of this.guides.values())
       (lines.material as LineBasicMaterial).color.copy(line);
     this.dirty = true;
@@ -367,141 +367,17 @@ export class Sculpture {
     this.dirty = true;
   }
 
-  /**
-   * Draws every formation once, settled and unlit, and returns each as an
-   * image sized to its panel. Panels show these stills while the live piece
-   * is docked somewhere else, so no panel is ever empty.
-   */
-  renderGhosts() {
-    const ghosts: Partial<Record<StationId, string>> = {};
-    const buffer = document.createElement("canvas");
-    const context = buffer.getContext("2d");
-    if (!context) return ghosts;
-
-    const saved = {
-      station: this.station,
-      travel: this.travel,
-      time: this.time,
-      spinYaw: this.spinYaw,
-      dragYaw: this.dragYaw,
-      dragPitch: this.dragPitch,
-      pointerX: this.pointerSmooth.x,
-      pointerY: this.pointerSmooth.y,
-      tilt: this.tilt.clone(),
-      opacity: new Map(
-        [...this.guides].map(([id, lines]) => [
-          id,
-          (lines.material as LineBasicMaterial).opacity,
-        ]),
-      ),
-    };
-    const ratio = this.renderer.getPixelRatio();
-    const centre: Placement = {
-      x: this.width / 2,
-      y: this.height / 2,
-      scale: 1,
-    };
-
-    this.travel = TRAVEL + STAGGER;
-    this.time = 0;
-    this.spinYaw = this.dragYaw = this.dragPitch = 0;
-    this.pointerSmooth.set(0, 0);
-
-    for (const { id } of stations) {
-      const rect = this.options.getStage(id);
-      if (!rect || rect.width < 1 || rect.height < 1) continue;
-      const w = Math.min(rect.width, this.width);
-      const h = Math.min(rect.height, this.height);
-      const [extentX, extentY] = this.formations[id].extent;
-      centre.scale =
-        Math.min(w / (2 * extentX), h / (2 * extentY)) * STAGE_FILL;
-
-      this.station = id;
-      this.aim(centre);
-      this.updateRig(0);
-      this.updateBlocks(0, true);
-      for (const [guide, lines] of this.guides) {
-        lines.visible = guide === id;
-        (lines.material as LineBasicMaterial).opacity = 0.55;
-      }
-      this.renderer.render(this.scene, this.camera);
-
-      // The drawing buffer is only readable until this task yields.
-      buffer.width = Math.round(w * ratio);
-      buffer.height = Math.round(h * ratio);
-      context.clearRect(0, 0, buffer.width, buffer.height);
-      context.drawImage(
-        this.renderer.domElement,
-        Math.round(((this.width - w) / 2) * ratio),
-        Math.round(((this.height - h) / 2) * ratio),
-        buffer.width,
-        buffer.height,
-        0,
-        0,
-        buffer.width,
-        buffer.height,
-      );
-      ghosts[id] = buffer.toDataURL("image/png");
-    }
-
-    this.station = saved.station;
-    this.travel = saved.travel;
-    this.time = saved.time;
-    this.spinYaw = saved.spinYaw;
-    this.dragYaw = saved.dragYaw;
-    this.dragPitch = saved.dragPitch;
-    this.pointerSmooth.set(saved.pointerX, saved.pointerY);
-    this.tilt.copy(saved.tilt);
-    for (const [id, lines] of this.guides) {
-      const material = lines.material as LineBasicMaterial;
-      material.opacity = saved.opacity.get(id) ?? 0;
-      lines.visible = material.opacity > 0.01;
-    }
-    this.renderer.clear();
-    this.blank = false;
-    this.dirty = true;
-    return ghosts;
-  }
-
-  startDrag() {
-    this.dragging = true;
-    this.dragMoved = 0;
-    this.dragVelocity = 0;
-  }
-
-  drag(dx: number, dy: number) {
-    if (!this.dragging) return;
-    this.dragMoved += Math.abs(dx) + Math.abs(dy);
-    this.dragVelocity = dx * 0.008;
-    this.dragYaw += this.dragVelocity;
-    this.dragPitch = Math.max(-0.6, Math.min(0.6, this.dragPitch + dy * 0.005));
-    this.dirty = true;
-  }
-
-  /** Ends a drag; a press that barely moved counts as a click on the group. */
-  endDrag() {
-    if (!this.dragging) return;
-    this.dragging = false;
-    if (this.dragMoved < 5 && this.hoverKey)
-      this.options.onSelect(this.hoverKey);
-  }
-
-  hoverAt(x: number, y: number) {
-    this.hoverPoint.set(x, y);
-    this.hoverPending = true;
-  }
-
-  hoverEnd() {
-    this.hoverPending = false;
-    this.clearHover();
-  }
-
   dispose() {
     this.disposed = true;
     cancelAnimationFrame(this.raf);
     this.resizeObserver.disconnect();
     window.removeEventListener("pointermove", this.onWindowPointer);
     document.removeEventListener("visibilitychange", this.onVisibility);
+    this.host.removeEventListener("pointerdown", this.onPointerDown);
+    this.host.removeEventListener("pointermove", this.onPointerMove);
+    this.host.removeEventListener("pointerup", this.onPointerUp);
+    this.host.removeEventListener("pointercancel", this.onPointerUp);
+    this.host.removeEventListener("pointerleave", this.onPointerLeave);
     for (const lines of this.guides.values()) {
       lines.geometry.dispose();
       (lines.material as LineBasicMaterial).dispose();
@@ -543,17 +419,60 @@ export class Sculpture {
     );
   };
 
+  private readonly onPointerDown = (event: PointerEvent) => {
+    if (event.pointerType === "touch" || event.button !== 0) return;
+    this.dragging = true;
+    this.dragMoved = 0;
+    this.dragVelocity = 0;
+    this.host.setPointerCapture(event.pointerId);
+    this.host.dataset.dragging = "true";
+  };
+
+  private readonly onPointerMove = (event: PointerEvent) => {
+    if (event.pointerType === "touch") return;
+    if (this.dragging) {
+      this.dragMoved += Math.abs(event.movementX) + Math.abs(event.movementY);
+      this.dragVelocity = event.movementX * 0.006;
+      this.dragYaw += this.dragVelocity;
+      this.dragPitch = Math.max(
+        -0.6,
+        Math.min(0.6, this.dragPitch + event.movementY * 0.004),
+      );
+      this.dirty = true;
+      return;
+    }
+    this.hoverAt.set(event.clientX, event.clientY);
+    this.hoverPending = true;
+  };
+
+  private readonly onPointerUp = (event: PointerEvent) => {
+    if (!this.dragging) return;
+    this.dragging = false;
+    delete this.host.dataset.dragging;
+    if (this.host.hasPointerCapture(event.pointerId))
+      this.host.releasePointerCapture(event.pointerId);
+    if (this.dragMoved < 5 && this.hoverKey)
+      this.options.onSelect(this.hoverKey);
+  };
+
+  private readonly onPointerLeave = () => {
+    this.hoverPending = false;
+    this.clearHover();
+  };
+
   private clearHover() {
     if (this.hoverKey === null) return;
     this.hoverKey = null;
+    this.host.dataset.hit = "false";
     this.options.onHover(null);
   }
 
   private pick() {
     this.hoverPending = false;
+    const rect = this.host.getBoundingClientRect();
     this.ndc.set(
-      (this.hoverPoint.x / this.width) * 2 - 1,
-      -(this.hoverPoint.y / this.height) * 2 + 1,
+      ((this.hoverAt.x - rect.left) / rect.width) * 2 - 1,
+      -((this.hoverAt.y - rect.top) / rect.height) * 2 + 1,
     );
     this.raycaster.setFromCamera(this.ndc, this.camera);
     const formation = this.formations[this.station];
@@ -565,36 +484,14 @@ export class Sculpture {
     if (!hit || hit.instanceId === undefined) return this.clearHover();
     const group = formation.groups[formation.group[hit.instanceId]];
     this.hoverKey = group.key;
+    this.host.dataset.hit = "true";
     this.options.onHover({
       key: group.key,
       label: group.label,
       sub: group.sub,
-      x: this.hoverPoint.x,
-      y: this.hoverPoint.y,
+      x: this.hoverAt.x,
+      y: this.hoverAt.y,
     });
-  }
-
-  /**
-   * Reads a station's panel into `out`. Falls back to the last known panel,
-   * then to the middle of the viewport, so a missing panel never breaks a trip.
-   */
-  private stageOf(id: StationId, out: Placement) {
-    const rect = this.options.getStage(id);
-    const [extentX, extentY] = this.formations[id].extent;
-    if (rect && rect.width > 0 && rect.height > 0) {
-      out.x = rect.left + rect.width / 2;
-      out.y = rect.top + rect.height / 2;
-      out.scale =
-        Math.min(rect.width / (2 * extentX), rect.height / (2 * extentY)) *
-        STAGE_FILL;
-      this.lastStage.set(id, { ...out });
-      return out;
-    }
-    const known = this.lastStage.get(id);
-    out.x = known?.x ?? this.width / 2;
-    out.y = known?.y ?? this.height / 2;
-    out.scale = known?.scale ?? 40;
-    return out;
   }
 
   private readonly loop = (now: number) => {
@@ -607,20 +504,7 @@ export class Sculpture {
     if (still && !this.dirty && !this.hoverPending) return;
     if (!still) this.time += dt;
 
-    const onScreen = this.updateCamera();
-    const settled = this.travel >= TRAVEL + STAGGER;
-    if (!onScreen && settled) {
-      // The panel is well off screen: draw one empty frame, then idle.
-      if (!this.blank) {
-        this.renderer.clear();
-        this.hideLabels();
-        this.blank = true;
-      }
-      this.dirty = false;
-      return;
-    }
-    this.blank = false;
-
+    this.updateCamera(dt);
     this.updateRig(dt);
     this.updateBlocks(dt);
     this.updateGuides(dt);
@@ -630,42 +514,35 @@ export class Sculpture {
     this.dirty = false;
   };
 
-  /** Places the camera so the piece lands on its panel. Returns visibility. */
-  private updateCamera() {
-    const target = this.stageOf(this.station, this.placement);
-    const progress = easeInOut(Math.min(1, this.travel / (TRAVEL + STAGGER)));
-    if (progress < 1) {
-      const fromY = this.departure.y - (window.scrollY - this.departureScroll);
-      target.x = this.departure.x + (target.x - this.departure.x) * progress;
-      target.y = fromY + (target.y - fromY) * progress;
-      target.scale =
-        this.departure.scale + (target.scale - this.departure.scale) * progress;
-    }
+  private updateCamera(dt: number) {
+    const { centerX, centerY, fitWidth, fitHeight } = this.frame;
+    const targetShiftX = centerX - this.width / 2;
+    const targetShiftY = centerY - this.height / 2;
+    const fit = Math.max(120, Math.min(fitWidth, fitHeight));
+    const targetDistance =
+      (FIT_RADIUS * this.height) / (Math.tan((FOV * Math.PI) / 360) * fit);
 
-    this.aim(target);
+    const k =
+      this.framed && !this.options.reducedMotion ? 1 - Math.exp(-dt * 5) : 1;
+    this.framed = true;
+    this.shift.x += (targetShiftX - this.shift.x) * k;
+    this.shift.y += (targetShiftY - this.shift.y) * k;
+    this.distance += (targetDistance - this.distance) * k;
 
-    const margin = this.height * 0.4;
-    return target.y > -margin && target.y < this.height + margin;
-  }
-
-  /** Points the camera so the piece is drawn at `at`, in viewport pixels. */
-  private aim(at: Placement) {
-    const distance =
-      this.height / (2 * Math.tan((FOV * Math.PI) / 360) * at.scale);
     this.camera.aspect = this.width / this.height;
-    this.camera.position.set(0, 0, distance);
+    this.camera.position.set(0, 0, this.distance);
     // An off-axis frustum moves the vanishing point with the sculpture, so it
-    // is not skewed when it sits away from the middle of the viewport.
+    // is not skewed when it sits beside the text column.
     this.camera.setViewOffset(
       this.width,
       this.height,
-      this.width / 2 - at.x,
-      this.height / 2 - at.y,
+      -this.shift.x,
+      -this.shift.y,
       this.width,
       this.height,
     );
-    this.fog.near = distance - 2.5;
-    this.fog.far = distance + 9;
+    this.fog.near = this.distance - 2.5;
+    this.fog.far = this.distance + 9;
   }
 
   private updateRig(dt: number) {
@@ -693,12 +570,11 @@ export class Sculpture {
     }
 
     this.pointerSmooth.lerp(this.pointer, 1 - Math.exp(-dt * 3));
-    const sway =
-      formation.spin === 0 ? Math.sin(this.time * 0.22) * formation.sway : 0;
+    const sway = formation.spin === 0 ? Math.sin(this.time * 0.22) * 0.3 : 0;
     const yaw =
-      this.spinYaw + this.dragYaw + sway + this.pointerSmooth.x * 0.14;
+      this.spinYaw + this.dragYaw + sway + this.pointerSmooth.x * 0.16;
 
-    this.lean.set(this.dragPitch + this.pointerSmooth.y * 0.08, 0, 0);
+    this.lean.set(this.dragPitch + this.pointerSmooth.y * 0.09, 0, 0);
     this.leanQuat.setFromEuler(this.lean);
     this.yawQuat.setFromAxisAngle(Y_AXIS, yaw);
     this.rig.quaternion
@@ -708,7 +584,7 @@ export class Sculpture {
     this.rig.updateMatrixWorld();
   }
 
-  private updateBlocks(dt: number, ghost = false) {
+  private updateBlocks(dt: number) {
     const formation = this.formations[this.station];
     formation.tick?.(this.time);
     this.travel = Math.min(TRAVEL + STAGGER, this.travel + dt);
@@ -776,12 +652,10 @@ export class Sculpture {
 
       // glow: +1 for the focused group, -1 for everything else, 0 at rest.
       const want = hasFocus ? (group[i] === this.focusGroup ? 1 : -1) : 0;
-      const glow = ghost
-        ? 0
-        : still
-          ? want
-          : this.glow[i] + (want - this.glow[i]) * glowRate;
-      if (!ghost) this.glow[i] = glow;
+      const glow = still
+        ? want
+        : this.glow[i] + (want - this.glow[i]) * glowRate;
+      this.glow[i] = glow;
       const swell = glow > 0 ? 1 + glow * 0.16 : 1;
       sx *= swell;
       sy *= swell;
@@ -835,17 +709,9 @@ export class Sculpture {
     const settled = this.travel > TRAVEL * 0.6;
     for (const [id, lines] of this.guides) {
       const material = lines.material as LineBasicMaterial;
-      const want = id === this.station && settled ? 0.55 : 0;
+      const want = id === this.station && settled ? 0.3 : 0;
       material.opacity += (want - material.opacity) * rate;
       lines.visible = material.opacity > 0.01;
-    }
-  }
-
-  private hideLabels() {
-    for (const label of this.labels) {
-      if (!label.shown) continue;
-      label.shown = false;
-      label.el.classList.remove("is-visible");
     }
   }
 
@@ -863,20 +729,23 @@ export class Sculpture {
         label.el.classList.toggle("is-visible", active);
         if (active) label.width = label.el.offsetWidth;
       }
+      label.el.classList.toggle(
+        "is-lit",
+        active && label.group.key === this.focus,
+      );
       if (!active) continue;
 
       this.scratch.set(...label.group.anchor);
       if (formation.fixedAnchors) this.scratch.applyQuaternion(this.anchorQuat);
       else this.scratch.applyMatrix4(this.rig.matrixWorld);
       this.scratch.project(this.camera);
-      // Labels are centred on their anchor and kept inside the viewport.
-      const half = label.width / 2 + 8;
-      const x = Math.max(
-        half,
-        Math.min(this.width - half, (this.scratch.x * 0.5 + 0.5) * this.width),
+      // Keep the label clear of the section rail on the right edge.
+      const x = Math.min(
+        (this.scratch.x * 0.5 + 0.5) * this.width,
+        this.width - label.width - LABEL_GUTTER,
       );
       const y = (-this.scratch.y * 0.5 + 0.5) * this.height;
-      label.el.style.transform = `translate3d(${x.toFixed(1)}px, ${y.toFixed(1)}px, 0) translate(-50%, -100%)`;
+      label.el.style.transform = `translate3d(${x.toFixed(1)}px, ${y.toFixed(1)}px, 0)`;
     }
   }
 }

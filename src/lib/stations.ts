@@ -8,33 +8,39 @@ import { skillCategories, skillCount } from "@/constants/skills";
 export const stations = [
   {
     id: "home",
+    nav: "Index",
     figure: "Assembly",
     caption: "Four layers, one stack.",
   },
   {
     id: "about",
+    nav: "About",
     figure: "Island",
-    caption: "Malta, in blocks.",
+    caption: "Malta, redrawn in blocks.",
   },
   {
     id: "skills",
+    nav: "Toolkit",
     figure: "Orbits",
-    caption: `${skillCount} tools, ${skillCategories.length} rings.`,
+    caption: `${skillCount} tools on ${skillCategories.length} rings.`,
   },
   {
     id: "projects",
+    nav: "Work",
     figure: "Skyline",
-    caption: `${projects.length} builds, sized by stack.`,
+    caption: `${projects.length} builds. Height follows stack size.`,
   },
   {
     id: "experience",
+    nav: "Experience",
     figure: "Helix",
-    caption: "2020 to now.",
+    caption: "2020 to now, wound bottom to top.",
   },
   {
     id: "contact",
+    nav: "Contact",
     figure: "Signal",
-    caption: "Ripples on send.",
+    caption: "Send a message, watch it ripple.",
   },
 ] as const;
 
@@ -61,3 +67,5 @@ export const focusKey = {
   project: (title: string) => `project:${slugify(title)}`,
   job: (company: string) => `job:${slugify(company)}`,
 };
+
+export const figureNumber = (index: number) => String(index).padStart(2, "0");
