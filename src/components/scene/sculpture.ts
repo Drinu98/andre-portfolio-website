@@ -2,6 +2,7 @@ import {
   BoxGeometry,
   BufferAttribute,
   BufferGeometry,
+  CanvasTexture,
   Color,
   DirectionalLight,
   DynamicDrawUsage,
@@ -9,16 +10,22 @@ import {
   Fog,
   Group,
   HemisphereLight,
+  ImageLoader,
   InstancedBufferAttribute,
   InstancedMesh,
   LineBasicMaterial,
   LineSegments,
+  Mesh,
+  MeshBasicMaterial,
   MeshLambertMaterial,
   PerspectiveCamera,
+  PlaneGeometry,
   Quaternion,
   Raycaster,
   Scene,
   Sphere,
+  SRGBColorSpace,
+  type Texture,
   Vector2,
   Vector3,
   WebGLRenderer,
@@ -26,6 +33,8 @@ import {
 import { stations, type StationId } from "@/lib/stations";
 import {
   buildFormations,
+  CARD_HEIGHT,
+  CARD_WIDTH,
   type Formation,
   type FormationGroup,
 } from "./formations";
@@ -36,6 +45,8 @@ export type SculptureHit = {
   sub?: string;
   x: number;
   y: number;
+  /** A hit that can be clicked but should not take the focus. */
+  passive?: boolean;
 };
 
 export type SculptureFrame = {
@@ -52,6 +63,8 @@ type Options = {
   maxPixelRatio: number;
   reducedMotion: boolean;
   interactive: boolean;
+  /** Image URL per group key, for formations that carry image cards. */
+  cardImages?: Record<string, string>;
   onHover: (hit: SculptureHit | null) => void;
   onSelect: (key: string) => void;
 };
@@ -61,6 +74,8 @@ const FIT_RADIUS = 3.9;
 const TRAVEL = 1.25;
 const STAGGER = 0.55;
 const LABEL_GUTTER = 16;
+const CARD_PIXELS = 828;
+const CARD_BACKING = "#f6f3ec";
 const Y_AXIS = new Vector3(0, 1, 0);
 
 const easeInOut = (t: number) =>
@@ -103,6 +118,16 @@ export class Sculpture {
     shown: boolean;
     width: number;
   }[] = [];
+  private readonly cards: {
+    station: StationId;
+    index: number;
+    mesh: Mesh<PlaneGeometry, MeshBasicMaterial>;
+    texture?: Texture;
+  }[] = [];
+  private readonly cardGeometry = new PlaneGeometry(CARD_WIDTH, CARD_HEIGHT);
+  private readonly cardColor = new Color();
+  private cardReveal = 0;
+  private cardsRequested = false;
 
   // Per-block state. `from` is where the current trip started, `cur` is now.
   private readonly fromPos: Float32Array;
@@ -257,6 +282,21 @@ export class Sculpture {
       this.guides.set(id, lines);
       this.rig.add(lines);
 
+      this.formations[id].cards?.forEach((card, index) => {
+        if (!options.cardImages?.[card.key]) return;
+        const mesh = new Mesh(
+          this.cardGeometry,
+          new MeshBasicMaterial({
+            transparent: true,
+            opacity: 0,
+            toneMapped: false,
+          }),
+        );
+        mesh.visible = false;
+        this.cards.push({ station: id, index, mesh });
+        this.rig.add(mesh);
+      });
+
       for (const group of this.formations[id].groups) {
         const el = document.createElement("span");
         el.className = "scene-label";
@@ -311,6 +351,7 @@ export class Sculpture {
     this.fromQuat.set(this.curQuat);
     this.tiltFrom.copy(this.tilt);
     this.station = id;
+    this.loadCards();
     this.travel = this.options.reducedMotion ? TRAVEL + STAGGER : 0;
     this.focusGroup = this.groupIndex(this.focus);
     this.clearHover();
@@ -355,6 +396,9 @@ export class Sculpture {
       this.baseColor[i * 3 + 1] = c.g;
       this.baseColor[i * 3 + 2] = c.b;
     }
+    this.cardColor.copy(cssColor("--card", "#f2eee4"));
+    for (const card of this.cards)
+      if (!card.texture) card.mesh.material.color.copy(this.cardColor);
     const line = cssColor("--ink", "#16150f");
     for (const lines of this.guides.values())
       (lines.material as LineBasicMaterial).color.copy(line);
@@ -383,6 +427,11 @@ export class Sculpture {
       (lines.material as LineBasicMaterial).dispose();
     }
     for (const label of this.labels) label.el.remove();
+    for (const card of this.cards) {
+      card.texture?.dispose();
+      card.mesh.material.dispose();
+    }
+    this.cardGeometry.dispose();
     this.geometry.dispose();
     this.material.dispose();
     this.mesh.dispose();
@@ -476,13 +525,37 @@ export class Sculpture {
     );
     this.raycaster.setFromCamera(this.ndc, this.camera);
     const formation = this.formations[this.station];
-    const hit = this.raycaster
-      .intersectObject(this.mesh, false)
-      .find(
-        (h) => h.instanceId !== undefined && formation.group[h.instanceId] >= 0,
+
+    // A card stands for its whole group, so its face is as good as its frame.
+    const targets = [
+      this.mesh,
+      ...this.cards.filter((c) => c.mesh.visible).map((c) => c.mesh),
+    ];
+    let index = -1;
+    for (const hit of this.raycaster.intersectObjects(targets, false)) {
+      const card = this.cards.find((c) => c.mesh === hit.object);
+      index = card
+        ? card.index
+        : hit.instanceId !== undefined
+          ? formation.group[hit.instanceId]
+          : -1;
+      if (index >= 0) break;
+    }
+    if (index < 0) return this.clearHover();
+
+    // On a reel only the front card takes the focus. Hovering one behind it
+    // would turn the wheel under the pointer and chase its own tail, so those
+    // are click targets only.
+    let passive = false;
+    if (formation.cards) {
+      const front = formation.cards.reduce(
+        (best, card, i, all) => (card.presence > all[best].presence ? i : best),
+        0,
       );
-    if (!hit || hit.instanceId === undefined) return this.clearHover();
-    const group = formation.groups[formation.group[hit.instanceId]];
+      passive = index !== front;
+    }
+
+    const group = formation.groups[index];
     this.hoverKey = group.key;
     this.host.dataset.hit = "true";
     this.options.onHover({
@@ -491,7 +564,57 @@ export class Sculpture {
       sub: group.sub,
       x: this.hoverAt.x,
       y: this.hoverAt.y,
+      passive,
     });
+  }
+
+  /** Fetches the card images once the visitor has started moving. */
+  private loadCards() {
+    if (this.cardsRequested || this.cards.length === 0) return;
+    this.cardsRequested = true;
+    const loader = new ImageLoader();
+    const anisotropy = Math.min(
+      8,
+      this.renderer.capabilities.getMaxAnisotropy(),
+    );
+    for (const card of this.cards) {
+      const key = this.formations[card.station].cards![card.index].key;
+      loader.load(this.options.cardImages![key], (image) => {
+        if (this.disposed) return;
+        // Paint the image onto an opaque sheet so logos with transparency do
+        // not let the card behind show through. Screenshots already match
+        // the card and fill it; anything of another shape is fitted inside.
+        const canvas = document.createElement("canvas");
+        canvas.width = CARD_PIXELS;
+        canvas.height = Math.round((CARD_PIXELS * CARD_HEIGHT) / CARD_WIDTH);
+        const context = canvas.getContext("2d");
+        if (!context) return;
+        const across = canvas.width / image.width;
+        const down = canvas.height / image.height;
+        const matches = Math.abs(across / down - 1) < 0.04;
+        const scale = matches ? Math.max(across, down) : Math.min(across, down);
+        const width = image.width * scale;
+        const height = image.height * scale;
+        context.fillStyle = CARD_BACKING;
+        context.fillRect(0, 0, canvas.width, canvas.height);
+        context.drawImage(
+          image,
+          (canvas.width - width) / 2,
+          matches ? 0 : (canvas.height - height) / 2,
+          width,
+          height,
+        );
+
+        const texture = new CanvasTexture(canvas);
+        texture.colorSpace = SRGBColorSpace;
+        texture.anisotropy = anisotropy;
+        card.texture = texture;
+        card.mesh.material.map = texture;
+        card.mesh.material.color.set(0xffffff);
+        card.mesh.material.needsUpdate = true;
+        this.dirty = true;
+      });
+    }
   }
 
   private readonly loop = (now: number) => {
@@ -507,6 +630,7 @@ export class Sculpture {
     this.updateCamera(dt);
     this.updateRig(dt);
     this.updateBlocks(dt);
+    this.updateCards(dt);
     this.updateGuides(dt);
     if (this.hoverPending && !this.dragging) this.pick();
     this.renderer.render(this.scene, this.camera);
@@ -518,9 +642,17 @@ export class Sculpture {
     const { centerX, centerY, fitWidth, fitHeight } = this.frame;
     const targetShiftX = centerX - this.width / 2;
     const targetShiftY = centerY - this.height / 2;
-    const fit = Math.max(120, Math.min(fitWidth, fitHeight));
+    const [extentX, extentY] = this.formations[this.station].extent ?? [
+      FIT_RADIUS,
+      FIT_RADIUS,
+    ];
+    // Pixels per scene unit that just fits the formation inside the frame.
+    const scale = Math.max(
+      12,
+      Math.min(fitWidth / (2 * extentX), fitHeight / (2 * extentY)),
+    );
     const targetDistance =
-      (FIT_RADIUS * this.height) / (Math.tan((FOV * Math.PI) / 360) * fit);
+      this.height / (2 * Math.tan((FOV * Math.PI) / 360) * scale);
 
     const k =
       this.framed && !this.options.reducedMotion ? 1 - Math.exp(-dt * 5) : 1;
@@ -570,7 +702,10 @@ export class Sculpture {
     }
 
     this.pointerSmooth.lerp(this.pointer, 1 - Math.exp(-dt * 3));
-    const sway = formation.spin === 0 ? Math.sin(this.time * 0.22) * 0.3 : 0;
+    const sway =
+      formation.spin === 0
+        ? Math.sin(this.time * 0.22) * (formation.sway ?? 0.3)
+        : 0;
     const yaw =
       this.spinYaw + this.dragYaw + sway + this.pointerSmooth.x * 0.16;
 
@@ -586,7 +721,7 @@ export class Sculpture {
 
   private updateBlocks(dt: number) {
     const formation = this.formations[this.station];
-    formation.tick?.(this.time);
+    formation.tick?.(this.time, this.focusGroup, this.options.reducedMotion);
     this.travel = Math.min(TRAVEL + STAGGER, this.travel + dt);
 
     const { pos, scl, quat, group } = formation;
@@ -702,6 +837,26 @@ export class Sculpture {
 
     this.mesh.instanceMatrix.needsUpdate = true;
     this.mesh.instanceColor!.needsUpdate = true;
+  }
+
+  /** Fades the image cards in once their frames have arrived, and out again. */
+  private updateCards(dt: number) {
+    if (this.cards.length === 0) return;
+    const rate = this.options.reducedMotion ? 1 : 1 - Math.exp(-dt * 4);
+    const arrived = this.travel > TRAVEL * 0.85;
+    const active = this.cards[0].station === this.station;
+    this.cardReveal += ((active && arrived ? 1 : 0) - this.cardReveal) * rate;
+
+    for (const { station, index, mesh } of this.cards) {
+      const card = this.formations[station].cards![index];
+      const opacity = this.cardReveal * card.presence;
+      mesh.visible = opacity > 0.01;
+      if (!mesh.visible) continue;
+      mesh.position.set(0, card.y, card.z);
+      mesh.rotation.x = card.tilt;
+      mesh.scale.setScalar(card.scale);
+      mesh.material.opacity = opacity;
+    }
   }
 
   private updateGuides(dt: number) {

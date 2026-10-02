@@ -13,8 +13,8 @@ export const Work = () => {
       <div className="wrap">
         <div className="col">
           <SectionHead station="projects" title="I love building things">
-            Every project is a tower in the skyline. The longer the tech stack,
-            the taller it stands.
+            The reel turns as you read. Hover a project to bring its screen to
+            the front.
           </SectionHead>
 
           <div>

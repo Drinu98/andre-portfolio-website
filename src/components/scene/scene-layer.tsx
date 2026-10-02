@@ -1,12 +1,39 @@
 "use client";
 import React, { useEffect, useRef, useState } from "react";
-import { figureNumber, stations, type StationId } from "@/lib/stations";
+import { getImageProps } from "next/image";
+import { projects } from "@/constants/projects";
+import {
+  figureNumber,
+  focusKey,
+  stations,
+  type StationId,
+} from "@/lib/stations";
 import type { Sculpture, SculptureHit } from "./sculpture";
 
 const DESKTOP = "(min-width: 960px)";
 
 /** The window event the contact form fires once a message is sent. */
 export const PULSE_EVENT = "sculpture:pulse";
+
+/**
+ * The project screenshots, resized by the image optimiser so the scene loads
+ * about a tenth of the original files. The `1x` candidate is plenty for a card.
+ */
+const cardImages = Object.fromEntries(
+  projects.map((project) => {
+    const { props } = getImageProps({
+      src: project.src,
+      alt: "",
+      width: 828,
+      height: 592,
+    });
+    const url = props.srcSet?.split(", ")[0].split(" ")[0] ?? props.src;
+    return [focusKey.project(project.title), url];
+  }),
+);
+
+/** How far down the viewport an entry has to be to take the scroll focus. */
+const FOCUS_LINE = 0.42;
 
 /** Room kept clear at the bottom of the viewport for the figure caption. */
 const CAPTION_SPACE = 118;
@@ -73,7 +100,7 @@ export const SceneLayer = () => {
       }
       sculpture?.setStation(current);
 
-      const line = height * 0.42;
+      const line = height * FOCUS_LINE;
       const under = autoTargets.find((el) => {
         const rect = el.getBoundingClientRect();
         return rect.top <= line && rect.bottom >= line;
@@ -141,7 +168,7 @@ export const SceneLayer = () => {
     };
 
     const onHover = (hit: SculptureHit | null) => {
-      sceneFocus = hit?.key ?? null;
+      sceneFocus = hit && !hit.passive ? hit.key : null;
       light(sceneFocus);
       applyFocus();
       tooltip.dataset.visible = hit ? "true" : "false";
@@ -153,12 +180,20 @@ export const SceneLayer = () => {
       tooltip.style.transform = `translate3d(${hit.x + (flip ? -18 : 18)}px, ${hit.y + 18}px, 0) translateX(${flip ? "-100%" : "0"})`;
     };
 
+    // Clicking part of the piece scrolls its entry onto the line the scroll
+    // focus reads from, so the entry takes the focus once it arrives.
     const onSelect = (key: string) => {
       const target =
         document.querySelector(`[data-focus="${key}"][data-focus-auto]`) ??
         document.querySelector(`[data-focus="${key}"]`);
-      target?.scrollIntoView({
-        block: "center",
+      if (!target) return;
+      const rect = target.getBoundingClientRect();
+      window.scrollTo({
+        top:
+          window.scrollY +
+          rect.top +
+          rect.height / 2 -
+          window.innerHeight * FOCUS_LINE,
         behavior: reducedMotion ? "auto" : "smooth",
       });
     };
@@ -192,6 +227,9 @@ export const SceneLayer = () => {
           maxPixelRatio: wide ? 2 : 1.5,
           reducedMotion,
           interactive: wide,
+          // Small screens keep the scene as a faint backdrop, where images
+          // would fight the text, so they get the frames without the cards.
+          cardImages: wide ? cardImages : undefined,
           onHover,
           onSelect,
         });

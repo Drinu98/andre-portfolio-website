@@ -31,9 +31,36 @@ export type Formation = {
   fixedAnchors: boolean;
   /** Line segment vertex pairs drawn under the blocks. */
   guides: Float32Array;
-  /** Rewrites the targets for time-dependent formations. */
-  tick?: (time: number) => void;
+  /** Half-angle of the idle sway in radians, for formations that do not spin. */
+  sway?: number;
+  /**
+   * Half-width and half-height the formation needs on screen, in scene units.
+   * Left out, it is framed as a sphere.
+   */
+  extent?: [number, number];
+  /** Image cards carried by the blocks. `tick` keeps their placement current. */
+  cards?: Card[];
+  /**
+   * Rewrites the targets for time-dependent formations. `focus` is the index
+   * of the focused group (or -1), and `snap` skips any easing.
+   */
+  tick?: (time: number, focus: number, snap: boolean) => void;
 };
+
+/** Where one image card sits, in sculpture space. */
+export type Card = {
+  key: string;
+  y: number;
+  z: number;
+  /** Rotation about the x axis, in radians. */
+  tilt: number;
+  scale: number;
+  /** 1 for the card at the front, falling to 0 as it goes round the back. */
+  presence: number;
+};
+
+export const CARD_WIDTH = 4.2;
+export const CARD_HEIGHT = 3;
 
 type Rng = () => number;
 
@@ -519,7 +546,8 @@ const buildOrbits = (n: number): Formation => {
 };
 
 /* -------------------------------------------------------------------------- */
-/* 03 Skyline: one tower per project, as tall as its tech stack is long.       */
+/* 03 Reel: one framed screenshot per project, on a wheel that turns to        */
+/* whichever project is in focus.                                              */
 /* -------------------------------------------------------------------------- */
 
 const hostOf = (href: string) => {
@@ -530,79 +558,153 @@ const hostOf = (href: string) => {
   }
 };
 
-const buildSkyline = (n: number): Formation => {
+const buildReel = (n: number): Formation => {
   const rng = mulberry32(41);
   const f = blank(n);
   const order = shuffled(n, rng);
 
-  const foot = 4;
-  const perLevel = foot * foot;
-  const cell = n > 1000 ? 0.17 : 0.2;
-  const ground = -1.55;
+  const radius = 2.6;
+  const step = 0.62;
+  const halfW = CARD_WIDTH / 2 + 0.07;
+  const halfH = CARD_HEIGHT / 2 + 0.07;
+  const perimeter = 4 * (halfW + halfH);
   const shares = allocate(
     n,
-    projects.map((p) => 3 + p.stack.length),
+    projects.map(() => 1),
   );
-  const cols = Math.ceil(projects.length / 2);
-  const pitchX = 1.5;
-  const pitchZ = 1.7;
 
-  const groups: FormationGroup[] = [];
-  const guides: number[] = [];
+  // Neighbours sit a full step apart; cards further round are bunched up so
+  // all of them fit on the back of the wheel.
+  const angleOf = (offset: number) => {
+    const a = Math.abs(offset);
+    return Math.sign(offset) * (a <= 2 ? a * step : 2 * step + (a - 2) * 0.28);
+  };
+  const presenceOf = (offset: number) => {
+    const a = Math.abs(offset);
+    if (a <= 1) return 1 - 0.45 * a;
+    if (a <= 2) return 0.55 - 0.27 * (a - 1);
+    return Math.max(0, 0.28 - (a - 2) * 0.5);
+  };
+
+  // Each block's place on its card's frame, before the wheel turns it.
+  const card = new Int8Array(n);
+  const localX = new Float32Array(n);
+  const localY = new Float32Array(n);
+  const baseScl = new Float32Array(n * 3);
+
   let k = 0;
-  projects.forEach((project, pi) => {
-    const row = Math.floor(pi / cols);
-    const col = pi % cols;
-    const cx = (col - (cols - 1) / 2) * pitchX + (row === 0 ? -0.3 : 0.3);
-    const cz = (row === 0 ? -0.5 : 0.5) * pitchZ;
-    const levels = Math.ceil(shares[pi] / perLevel);
-
-    for (let b = 0; b < shares[pi]; b++, k++) {
+  projects.forEach((_, ci) => {
+    const count = shares[ci];
+    const pitch = perimeter / count;
+    for (let b = 0; b < count; b++, k++) {
       const i = order[k];
-      const lev = Math.floor(b / perLevel);
-      const within = b % perLevel;
-      f.pos[i * 3] = cx + ((within % foot) - (foot - 1) / 2) * cell;
-      f.pos[i * 3 + 1] = ground + (lev + 0.5) * cell;
-      f.pos[i * 3 + 2] =
-        cz + (Math.floor(within / foot) - (foot - 1) / 2) * cell;
-      const inset = rng() < 0.12 ? 0.55 : 0.86;
-      f.scl[i * 3] = cell * inset;
-      f.scl[i * 3 + 1] = cell * 0.84;
-      f.scl[i * 3 + 2] = cell * inset;
-      f.group[i] = pi;
+      let u = (b + 0.5) * pitch;
+      let x: number;
+      let y: number;
+      let flat = true;
+      if (u < 2 * halfW) {
+        x = -halfW + u;
+        y = halfH;
+      } else if ((u -= 2 * halfW) < 2 * halfH) {
+        x = halfW;
+        y = halfH - u;
+        flat = false;
+      } else if ((u -= 2 * halfH) < 2 * halfW) {
+        x = halfW - u;
+        y = -halfH;
+      } else {
+        x = -halfW;
+        y = -halfH + (u - 2 * halfW);
+        flat = false;
+      }
+      const bolt = rng() < 0.05;
+      const thick = bolt ? 0.14 : 0.06 + rng() * 0.03;
+      const length = bolt ? 0.14 : pitch * 0.86;
+      card[i] = ci;
+      localX[i] = x;
+      localY[i] = y;
+      baseScl[i * 3] = flat ? length : thick;
+      baseScl[i * 3 + 1] = flat ? thick : length;
+      baseScl[i * 3 + 2] = thick;
+      f.group[i] = ci;
     }
-
-    groups.push({
-      key: focusKey.project(project.title),
-      label: project.title,
-      sub: hostOf(project.href),
-      anchor: [cx, ground + levels * cell + 0.35, cz],
-    });
-
-    const r = (foot * cell) / 2 + 0.09;
-    guides.push(cx - r, ground, cz - r, cx + r, ground, cz - r);
-    guides.push(cx + r, ground, cz - r, cx + r, ground, cz + r);
-    guides.push(cx + r, ground, cz + r, cx - r, ground, cz + r);
-    guides.push(cx - r, ground, cz + r, cx - r, ground, cz - r);
   });
 
-  const halfX = (cols * pitchX) / 2 + 0.5;
-  const halfZ = pitchZ + 0.3;
-  guides.push(-halfX, ground, -halfZ, halfX, ground, -halfZ);
-  guides.push(halfX, ground, -halfZ, halfX, ground, halfZ);
-  guides.push(halfX, ground, halfZ, -halfX, ground, halfZ);
-  guides.push(-halfX, ground, halfZ, -halfX, ground, -halfZ);
-  guides.push(-halfX, ground, 0, halfX, ground, 0);
+  const cards: Card[] = projects.map((project) => ({
+    key: focusKey.project(project.title),
+    y: 0,
+    z: 0,
+    tilt: 0,
+    scale: 1,
+    presence: 0,
+  }));
+
+  let wheel = 0;
+  let last = 0;
+  const tick = (time: number, focus: number, snap: boolean) => {
+    const dt = Math.max(0, Math.min(0.05, time - last));
+    last = time;
+    const target = focus >= 0 ? focus : Math.round(wheel);
+    wheel = snap ? target : wheel + (target - wheel) * (1 - Math.exp(-dt * 5));
+
+    cards.forEach((c, ci) => {
+      const offset = ci - wheel;
+      c.tilt = angleOf(offset);
+      c.y = -radius * Math.sin(c.tilt);
+      // Cards are taller than the gap between them, so on a true cylinder
+      // their edges would cut through each other. Each step round the wheel
+      // also steps back, which keeps every card wholly behind the one before.
+      c.z =
+        radius * (Math.cos(c.tilt) - 1) - 0.9 * Math.min(3, Math.abs(offset));
+      c.scale = 1 - 0.26 * Math.min(1, Math.abs(offset));
+      c.presence = presenceOf(offset);
+    });
+
+    for (let i = 0; i < n; i++) {
+      const c = cards[card[i]];
+      const sin = Math.sin(c.tilt);
+      const cos = Math.cos(c.tilt);
+      const y = localY[i] * c.scale;
+      f.pos[i * 3] = localX[i] * c.scale;
+      f.pos[i * 3 + 1] = c.y + y * cos;
+      f.pos[i * 3 + 2] = c.z + y * sin;
+      f.scl[i * 3] = baseScl[i * 3] * c.scale;
+      f.scl[i * 3 + 1] = baseScl[i * 3 + 1] * c.scale;
+      f.scl[i * 3 + 2] = baseScl[i * 3 + 2] * c.scale;
+      f.quat[i * 4] = Math.sin(c.tilt / 2);
+      f.quat[i * 4 + 3] = Math.cos(c.tilt / 2);
+    }
+  };
+  tick(0, 0, true);
+
+  // The two rims of the wheel the cards ride on.
+  const guides: number[] = [];
+  for (const x of [-halfW - 0.3, halfW + 0.3])
+    circle(
+      guides,
+      radius,
+      (a, _, b) => [x, b, a - radius] as [number, number, number],
+      96,
+    );
 
   return {
     id: "projects",
     ...f,
-    groups,
-    tilt: tiltOf(0.5, -0.5, 0),
+    groups: projects.map((project) => ({
+      key: focusKey.project(project.title),
+      label: project.title,
+      sub: hostOf(project.href),
+      anchor: [-halfW, halfH + 0.16, 0],
+    })),
+    tilt: tiltOf(0.05, -0.34, 0),
     spin: 0,
+    sway: 0.09,
+    extent: [2.55, 3],
     labels: "focus",
     fixedAnchors: false,
     guides: new Float32Array(guides),
+    cards,
+    tick,
   };
 };
 
@@ -811,7 +913,7 @@ export const buildFormations = (n: number) => {
     home: buildAssembly(n),
     about: buildIsland(n),
     skills: buildOrbits(n),
-    projects: buildSkyline(n),
+    projects: buildReel(n),
     experience: buildHelix(n),
     contact: signal as Formation,
     pulse: signal.pulse,

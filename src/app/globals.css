@@ -1298,6 +1298,18 @@ button:hover > .arrow {
   border-bottom: 1px solid var(--line);
 }
 
+/* On wide screens the reel shows each project's screenshot at full size, so
+   the thumbnail in the list would only repeat it. */
+@media (min-width: 960px) {
+  html[data-webgl="ok"] .work {
+    grid-template-columns: 1fr;
+  }
+
+  html[data-webgl="ok"] .work__media {
+    display: none;
+  }
+}
+
 .work__media {
   align-self: start;
   overflow: hidden;

@@ -27,8 +27,8 @@ export const stations = [
   {
     id: "projects",
     nav: "Work",
-    figure: "Skyline",
-    caption: `${projects.length} builds. Height follows stack size.`,
+    figure: "Reel",
+    caption: `${projects.length} builds on one wheel.`,
   },
   {
     id: "experience",
