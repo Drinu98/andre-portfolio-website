@@ -8,10 +8,16 @@ const DESKTOP = "(min-width: 960px)";
 /** The window event the contact form fires once a message is sent. */
 export const PULSE_EVENT = "sculpture:pulse";
 
+/** Room kept clear at the bottom of the viewport for the figure caption. */
+const CAPTION_SPACE = 118;
+
 /**
  * Mounts the sculpture behind the page and keeps it in step with the DOM:
  * scroll position picks the formation, and anything carrying `data-focus`
  * lights its blocks (and is lit back when the blocks are hovered).
+ *
+ * The hero holds the piece in the middle of the sheet. After that the text
+ * column alternates sides, and the piece takes whichever side is free.
  */
 export const SceneLayer = () => {
   const hostRef = useRef<HTMLDivElement>(null);
@@ -48,7 +54,6 @@ export const SceneLayer = () => {
       id,
       el: document.getElementById(id),
     }));
-    const column = document.querySelector<HTMLElement>("[data-col]");
     const autoTargets = Array.from(
       document.querySelectorAll<HTMLElement>("[data-focus-auto]"),
     );
@@ -77,13 +82,36 @@ export const SceneLayer = () => {
       applyFocus();
 
       if (desktop.matches) {
-        const left = (column?.getBoundingClientRect().right ?? width / 2) + 56;
-        const right = width - 84;
+        const section = sections.find((s) => s.id === current)?.el;
+        const column = section?.querySelector<HTMLElement>(".col");
+        const header =
+          parseFloat(getComputedStyle(root).getPropertyValue("--header-h")) ||
+          76;
+
+        // The piece stays inside the part of its own section that is on
+        // screen, so it never ends up behind the next section's text.
+        const rect = section?.getBoundingClientRect();
+        const top = Math.max(header, rect?.top ?? 0);
+        const bottom = Math.max(
+          top + 160,
+          Math.min(height - CAPTION_SPACE, rect?.bottom ?? height),
+        );
+
+        let side: "center" | "left" | "right" = "center";
+        let left = width * 0.28;
+        let right = width * 0.72;
+        if (column) {
+          const text = column.getBoundingClientRect();
+          side = text.left + text.width / 2 < width / 2 ? "right" : "left";
+          left = side === "right" ? text.right + 56 : 48;
+          right = side === "right" ? width - 48 : text.left - 56;
+        }
+        root.dataset.side = side;
         sculpture?.setFrame({
           centerX: (left + right) / 2,
-          centerY: height * 0.5 + 12,
+          centerY: (top + bottom) / 2,
           fitWidth: right - left,
-          fitHeight: height * 0.76,
+          fitHeight: (bottom - top) * (side === "center" ? 0.74 : 0.86),
         });
         host.style.removeProperty("--scene-fade");
       } else {
@@ -209,38 +237,44 @@ export const SceneLayer = () => {
   return (
     <>
       <div ref={hostRef} className="scene" aria-hidden="true" />
-      <div className="scene-scrim" aria-hidden="true" />
       <div ref={labelsRef} className="scene-labels" aria-hidden="true" />
       <div className="marks" aria-hidden="true">
         <i />
         <i />
         <i />
+        <i />
       </div>
 
-      <div key={active.id} className="figure" aria-hidden="true">
-        <span className="mono figure__number">Fig. {figureNumber(index)}</span>
-        <span className="figure__name">{active.figure}</span>
-        <span className="figure__caption">{active.caption}</span>
+      {/* The caption follows the piece from side to side; the pips under it
+          are the six arrangements, and double as section links. */}
+      <div className="figure">
+        <div key={active.id} className="figure__text" aria-hidden="true">
+          <span className="mono figure__number">
+            Fig. {figureNumber(index)}
+          </span>
+          <span className="figure__name">{active.figure}</span>
+          <span className="figure__caption">{active.caption}</span>
+        </div>
+        <nav className="pips" aria-label="Sections">
+          {stations.map((s) => (
+            <a
+              key={s.id}
+              href={`#${s.id}`}
+              aria-label={s.nav}
+              aria-current={s.id === station ? "true" : undefined}
+            >
+              <span className="mono" aria-hidden="true">
+                {s.figure}
+              </span>
+            </a>
+          ))}
+        </nav>
         {interactive && (
-          <span className="mono figure__hint">
+          <span className="mono figure__hint" aria-hidden="true">
             Drag to turn · Hover to inspect
           </span>
         )}
       </div>
-
-      <nav className="rail" aria-label="Sections">
-        {stations.map((s, i) => (
-          <a
-            key={s.id}
-            href={`#${s.id}`}
-            className="mono"
-            aria-current={s.id === station ? "true" : undefined}
-          >
-            <span>{s.figure}</span>
-            {figureNumber(i)}
-          </a>
-        ))}
-      </nav>
 
       <div
         ref={tooltipRef}

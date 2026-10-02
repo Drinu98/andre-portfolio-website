@@ -17,8 +17,9 @@ export const SectionHead = ({
     <header className="section-head" data-reveal>
       <p className="mono section-head__meta">
         <span>
-          <b>{figureNumber(index)}</b> / {nav}
+          Sheet <b>{figureNumber(index)}</b>
         </span>
+        <span>{nav}</span>
         <span>Fig. {figure}</span>
       </p>
       <h2 id={`${station}-title`}>{title}</h2>

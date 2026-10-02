@@ -5,7 +5,11 @@ import { SectionHead } from "../section-head";
 
 export const Toolkit = () => {
   return (
-    <section id="skills" className="section" aria-labelledby="skills-title">
+    <section
+      id="skills"
+      className="section section--flip"
+      aria-labelledby="skills-title"
+    >
       <div className="wrap">
         <div className="col">
           <SectionHead station="skills" title="Skills & technologies">

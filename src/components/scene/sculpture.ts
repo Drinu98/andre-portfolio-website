@@ -60,7 +60,7 @@ const FOV = 30;
 const FIT_RADIUS = 3.9;
 const TRAVEL = 1.25;
 const STAGGER = 0.55;
-const LABEL_GUTTER = 76;
+const LABEL_GUTTER = 16;
 const Y_AXIS = new Vector3(0, 1, 0);
 
 const easeInOut = (t: number) =>
@@ -739,7 +739,7 @@ export class Sculpture {
       if (formation.fixedAnchors) this.scratch.applyQuaternion(this.anchorQuat);
       else this.scratch.applyMatrix4(this.rig.matrixWorld);
       this.scratch.project(this.camera);
-      // Keep the label clear of the section rail on the right edge.
+      // Keep the label inside the viewport.
       const x = Math.min(
         (this.scratch.x * 0.5 + 0.5) * this.width,
         this.width - label.width - LABEL_GUTTER,

@@ -9,41 +9,39 @@ const roles = [
   "Front-end Engineer",
 ];
 
+const delay = (ms: number) => ({ "--d": `${ms}ms` }) as React.CSSProperties;
+
+/**
+ * On wide screens the hero is laid out like a poster: the sculpture holds the
+ * middle of the sheet and the copy sits in the corners around it.
+ */
 export const Hero = () => {
   return (
     <section id="home" className="hero" aria-labelledby="home-title">
-      <div className="wrap">
-        <div className="col" data-col>
-          <p className="mono eyebrow" data-reveal>
-            <span className="signal" aria-hidden="true" />
-            Full-stack developer · Malta
-          </p>
-
-          <h1
-            id="home-title"
+      <div className="wrap hero__grid">
+        <h1 id="home-title" className="hero__title">
+          <span className="mono hero__name" data-reveal>
+            {siteConfig.name} — Full‑stack developer, Malta
+          </span>
+          <span className="hero__line" data-reveal style={delay(80)}>
+            Concept to launch,
+          </span>
+          <span
+            className="hero__line hero__line--end"
             data-reveal
-            style={{ "--d": "80ms" } as React.CSSProperties}
+            style={delay(160)}
           >
-            <span className="mono hero__name">{siteConfig.name}</span>
-            <span className="hero__statement">
-              Concept to launch, <em>end to end.</em>
-            </span>
-          </h1>
+            end to end.
+          </span>
+        </h1>
 
-          <p
-            className="hero__lede"
-            data-reveal
-            style={{ "--d": "160ms" } as React.CSSProperties}
-          >
+        <div className="hero__intro" data-reveal style={delay(240)}>
+          <p className="hero__lede">
             I’m a self‑employed full‑stack developer who designs and builds
             end‑to‑end products, from UI/UX to backend and deployment.
           </p>
 
-          <div
-            className="mono hero__role"
-            data-reveal
-            style={{ "--d": "220ms" } as React.CSSProperties}
-          >
+          <div className="mono hero__role">
             <span>Works as</span>
             {/* The first role is repeated so the loop has no visible seam. */}
             <ul>
@@ -58,25 +56,7 @@ export const Hero = () => {
             </ul>
           </div>
 
-          <ul
-            className="layers"
-            aria-label="The layers of a build"
-            data-reveal
-            style={{ "--d": "280ms" } as React.CSSProperties}
-          >
-            {stackLayers.map((layer, index) => (
-              <li key={layer.key} data-focus={focusKey.layer(layer.key)}>
-                <span className="mono">0{index + 1}</span>
-                {layer.title}
-              </li>
-            ))}
-          </ul>
-
-          <div
-            className="actions"
-            data-reveal
-            style={{ "--d": "340ms" } as React.CSSProperties}
-          >
+          <div className="actions">
             <a className="button" href="#projects">
               See selected work{" "}
               <span className="arrow" aria-hidden="true">
@@ -90,6 +70,19 @@ export const Hero = () => {
               </span>
             </a>
           </div>
+        </div>
+
+        {/* A key to the sculpture: each row lights one slab of the stack. */}
+        <div className="legend" data-reveal style={delay(320)}>
+          <p className="mono">Key · The stack</p>
+          <ul className="layers">
+            {stackLayers.map((layer, index) => (
+              <li key={layer.key} data-focus={focusKey.layer(layer.key)}>
+                {layer.title}
+                <span className="mono">0{index + 1}</span>
+              </li>
+            ))}
+          </ul>
         </div>
       </div>
     </section>

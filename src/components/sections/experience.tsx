@@ -7,7 +7,7 @@ export const Experience = () => {
   return (
     <section
       id="experience"
-      className="section"
+      className="section section--flip"
       aria-labelledby="experience-title"
     >
       <div className="wrap">
