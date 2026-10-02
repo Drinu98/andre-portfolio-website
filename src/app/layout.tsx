@@ -1,23 +1,18 @@
-import type { Metadata, Viewport } from "next";
-import { Bricolage_Grotesque, IBM_Plex_Mono } from "next/font/google";
+import type { Metadata } from "next";
+import { Inter } from "next/font/google";
 import "./globals.css";
+import { Navbar } from "@/components/navbar";
+import { ViewTransitions } from "next-view-transitions";
+import { Footer } from "@/components/navbar/footer";
 import { Toaster } from "sonner";
 import { ThemeProvider } from "next-themes";
-import { SceneLayer } from "@/components/scene/scene-layer";
-import { SiteHeader } from "@/components/site-header";
-import { SiteFooter } from "@/components/site-footer";
-import { RevealObserver } from "@/components/reveal-observer";
+import { BackToTop } from "@/components/back-to-top";
 import { siteConfig } from "@/lib/site";
+import { SceneLayer } from "@/components/scene/scene-layer";
 
-const display = Bricolage_Grotesque({
+const inter = Inter({
   subsets: ["latin"],
-  variable: "--font-display",
-});
-
-const mono = IBM_Plex_Mono({
-  subsets: ["latin"],
-  weight: ["400", "500"],
-  variable: "--font-plex-mono",
+  weight: ["400", "500", "600", "700", "800", "900"],
 });
 
 export const metadata: Metadata = {
@@ -61,40 +56,29 @@ export const metadata: Metadata = {
   },
 };
 
-export const viewport: Viewport = {
-  themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#e9e4d8" },
-    { media: "(prefers-color-scheme: dark)", color: "#0e0f0d" },
-  ],
-};
-
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
   return (
-    <html
-      lang="en"
-      className={`${display.variable} ${mono.variable}`}
-      suppressHydrationWarning
-    >
-      <body>
-        <noscript>
-          <style>{`[data-reveal]{opacity:1;transform:none}`}</style>
-        </noscript>
-        <ThemeProvider attribute="class">
-          <a className="skip-link mono" href="#main">
-            Skip to content
-          </a>
-          <Toaster position="top-center" />
-          <SceneLayer />
-          <SiteHeader />
-          <main id="main">{children}</main>
-          <SiteFooter />
-          <RevealObserver />
-        </ThemeProvider>
-      </body>
-    </html>
+    <ViewTransitions>
+      <html lang="en" suppressHydrationWarning>
+        <body>
+          <ThemeProvider attribute="class">
+            <Toaster position="top-center" />
+            <main
+              className={`${inter.className} relative bg-neutral-100 antialiased [--pattern-fg:var(--color-neutral-950)]/5 dark:bg-neutral-950 dark:[--pattern-fg:var(--color-neutral-100)]/5`}
+            >
+              <SceneLayer />
+              <Navbar />
+              {children}
+              <Footer />
+              <BackToTop />
+            </main>
+          </ThemeProvider>
+        </body>
+      </html>
+    </ViewTransitions>
   );
 }
