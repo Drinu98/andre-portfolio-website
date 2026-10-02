@@ -13,5 +13,6 @@ export const siteConfig = {
     "Self‑employed full‑stack developer building and designing end‑to‑end systems for clients — websites and mobile apps from UI/UX through backend and deployment.",
   url: new URL(rawSiteUrl),
   twitterHandle: undefined as string | undefined,
+  socials: [{ label: "GitHub", href: "https://github.com/Drinu98" }],
 } as const;
 

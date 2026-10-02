@@ -50,7 +50,7 @@ export const projects: Project[] = [
   },
   {
       title: "Matthew Bonello",
-      src: "/images/projects/matthewBonello.webp",
+      src: "/images/projects/matthewbonello.webp",
       description:
         "A website for a local Fitness Coach called Matthew Bonello",
       href: "https://www.matthewbonello.com",

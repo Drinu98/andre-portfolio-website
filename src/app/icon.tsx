@@ -1,4 +1,5 @@
 import { ImageResponse } from "next/og";
+import { BlockMark, brand } from "@/lib/brand-image";
 
 export const runtime = "edge";
 export const size = { width: 32, height: 32 };
@@ -14,18 +15,12 @@ export default function Icon() {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          background: "#0a0a0a",
-          color: "#ffffff",
-          fontFamily:
-            'ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial',
-          fontWeight: 800,
-          borderRadius: 8,
+          background: brand.paper,
         }}
       >
-        A
+        <BlockMark size={18} />
       </div>
     ),
     size,
   );
 }
-
