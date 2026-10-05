@@ -38,7 +38,7 @@ export const experience: Experience[] = [
     ],
     startDate: "August 2021",
     endDate: "November 2024",
-    location: "St.Venera, Malta",
+    location: "St. Venera, Malta",
     stack: ["React", "TypeScript", "Redux", "GraphQL", "Jest", "Cypress"]
   },
   {
@@ -51,25 +51,4 @@ export const experience: Experience[] = [
     location: "Sliema, Malta",
     stack: ["React", "Redux", "Node.js", "Express", "MongoDB", "Styled Components"]
   },
-  // {
-  //   company: "Shopify",
-  //   designation: "Freelance Web Developer",
-  //   logo: "/images/logos/shopify-logo.png",
-  //   description: "Designed and developed custom Shopify themes for enterprise clients with optimized checkout flows.",
-  //   startDate: "March 2019",
-  //   endDate: "December 2019",
-  //   imageClass: "dark:filter dark:invert",
-  //   location: "Remote",
-  //   stack: [ "JavaScript", "HTML5", "CSS3", "SCSS", "Shopify API"]
-  // },
-  // {
-  //   company: "Adobe",
-  //   designation: "Freelance Frontend Consultant",
-  //   logo: "/images/logos/adobe-logo.png",
-  //   description: "Consulted on the redesign of Adobe's Creative Cloud web application.",
-  //   startDate: "September 2016",
-  //   endDate: "November 2016",
-  //   location: "Remote",
-  //   stack: ["HTML5", "JavaScript", "CSS3"]
-  // }
-  ];
+];

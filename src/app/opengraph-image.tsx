@@ -3,7 +3,7 @@ import { BlockMark, brand } from "@/lib/brand-image";
 import { siteConfig } from "@/lib/site";
 
 export const runtime = "edge";
-export const alt = `${siteConfig.name} — Full‑stack developer`;
+export const alt = `${siteConfig.name} — Full-stack developer`;
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -44,7 +44,7 @@ export default function OpenGraphImage() {
             <div style={{ color: brand.accent }}>end to end.</div>
           </div>
           <div style={{ fontSize: 30, color: brand.muted, lineHeight: 1.25 }}>
-            Self‑employed full‑stack developer building end‑to‑end systems for
+            Self-employed full-stack developer building end-to-end systems for
             clients.
           </div>
         </div>

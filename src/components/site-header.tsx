@@ -51,7 +51,7 @@ export const SiteHeader = () => {
       <div className="wrap site-header__bar">
         <a
           className="brand"
-          href="#home"
+          href="/#home"
           aria-label={`${siteConfig.name} home`}
           onClick={() => setOpen(false)}
         >
@@ -68,7 +68,7 @@ export const SiteHeader = () => {
           {links.map((link) => (
             <a
               key={link.id}
-              href={`#${link.id}`}
+              href={`/#${link.id}`}
               data-nav={link.id}
               onClick={() => setOpen(false)}
             >
@@ -80,7 +80,7 @@ export const SiteHeader = () => {
 
         <div className="site-header__tools">
           <ThemeToggle />
-          <a className="button button--small" href="#contact">
+          <a className="button button--small" href="/#contact">
             Get in touch
           </a>
           <button

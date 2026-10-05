@@ -10,7 +10,6 @@ import {
   Fog,
   Group,
   HemisphereLight,
-  ImageLoader,
   InstancedBufferAttribute,
   InstancedMesh,
   LineBasicMaterial,
@@ -25,7 +24,6 @@ import {
   Scene,
   Sphere,
   SRGBColorSpace,
-  type Texture,
   Vector2,
   Vector3,
   WebGLRenderer,
@@ -38,6 +36,18 @@ import {
   type Formation,
   type FormationGroup,
 } from "./formations";
+
+/** The words printed on one card. */
+export type CardFace = {
+  /** A short counter, such as "01". */
+  index: string;
+  title: string;
+  kind: string;
+  /** Where it lives: a host name, or a note that it has no public address. */
+  place: string;
+  /** A closing note, such as the number of tools used. */
+  note: string;
+};
 
 export type SculptureHit = {
   key: string;
@@ -63,8 +73,13 @@ type Options = {
   maxPixelRatio: number;
   reducedMotion: boolean;
   interactive: boolean;
-  /** Image URL per group key, for formations that carry image cards. */
-  cardImages?: Record<string, string>;
+  /**
+   * Keeps focus from recolouring the blocks. Used where the piece sits behind
+   * text, so a lit group does not fight the words in front of it.
+   */
+  quietFocus?: boolean;
+  /** What to print per group key, for formations that carry cards. */
+  cardFaces?: Record<string, CardFace>;
   onHover: (hit: SculptureHit | null) => void;
   onSelect: (key: string) => void;
 };
@@ -74,18 +89,33 @@ const FIT_RADIUS = 3.9;
 const TRAVEL = 1.25;
 const STAGGER = 0.55;
 const LABEL_GUTTER = 16;
-const CARD_PIXELS = 828;
-const CARD_BACKING = "#f6f3ec";
+const CARD_PIXELS = 1024;
 const Y_AXIS = new Vector3(0, 1, 0);
 
 const easeInOut = (t: number) =>
   t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
 
-const cssColor = (name: string, fallback: string) => {
-  const value = getComputedStyle(document.documentElement)
-    .getPropertyValue(name)
-    .trim();
-  return new Color(value || fallback);
+const cssValue = (name: string, fallback: string) =>
+  getComputedStyle(document.documentElement).getPropertyValue(name).trim() ||
+  fallback;
+
+const cssColor = (name: string, fallback: string) =>
+  new Color(cssValue(name, fallback));
+
+/** Breaks a title into the fewest lines that fit, never splitting a word. */
+const wrap = (
+  context: CanvasRenderingContext2D,
+  text: string,
+  width: number,
+) => {
+  const lines: string[] = [];
+  for (const word of text.split(" ")) {
+    const last = lines[lines.length - 1];
+    if (last && context.measureText(`${last} ${word}`).width <= width)
+      lines[lines.length - 1] = `${last} ${word}`;
+    else lines.push(word);
+  }
+  return lines;
 };
 
 /**
@@ -122,12 +152,12 @@ export class Sculpture {
     station: StationId;
     index: number;
     mesh: Mesh<PlaneGeometry, MeshBasicMaterial>;
-    texture?: Texture;
+    face: CardFace;
+    canvas: HTMLCanvasElement;
+    texture: CanvasTexture;
   }[] = [];
   private readonly cardGeometry = new PlaneGeometry(CARD_WIDTH, CARD_HEIGHT);
-  private readonly cardColor = new Color();
   private cardReveal = 0;
-  private cardsRequested = false;
 
   // Per-block state. `from` is where the current trip started, `cur` is now.
   private readonly fromPos: Float32Array;
@@ -166,6 +196,7 @@ export class Sculpture {
   private dragVelocity = 0;
   private dragging = false;
   private dragMoved = 0;
+  private readonly dragLast = new Vector2();
   private readonly pointer = new Vector2();
   private readonly pointerSmooth = new Vector2();
   private readonly hoverAt = new Vector2();
@@ -283,17 +314,28 @@ export class Sculpture {
       this.rig.add(lines);
 
       this.formations[id].cards?.forEach((card, index) => {
-        if (!options.cardImages?.[card.key]) return;
+        const face = options.cardFaces?.[card.key];
+        if (!face) return;
+        const canvas = document.createElement("canvas");
+        canvas.width = CARD_PIXELS;
+        canvas.height = Math.round((CARD_PIXELS * CARD_HEIGHT) / CARD_WIDTH);
+        const texture = new CanvasTexture(canvas);
+        texture.colorSpace = SRGBColorSpace;
+        texture.anisotropy = Math.min(
+          8,
+          this.renderer.capabilities.getMaxAnisotropy(),
+        );
         const mesh = new Mesh(
           this.cardGeometry,
           new MeshBasicMaterial({
+            map: texture,
             transparent: true,
             opacity: 0,
             toneMapped: false,
           }),
         );
         mesh.visible = false;
-        this.cards.push({ station: id, index, mesh });
+        this.cards.push({ station: id, index, mesh, face, canvas, texture });
         this.rig.add(mesh);
       });
 
@@ -323,6 +365,10 @@ export class Sculpture {
     if (options.reducedMotion) this.travel = TRAVEL + STAGGER;
 
     this.setTheme();
+    // The faces are printed in web fonts, which may still be on their way.
+    document.fonts?.ready.then(() => {
+      if (!this.disposed) this.paintCards();
+    });
 
     this.resizeObserver = new ResizeObserver(this.resize);
     this.resizeObserver.observe(host);
@@ -336,7 +382,7 @@ export class Sculpture {
       host.addEventListener("pointerdown", this.onPointerDown);
       host.addEventListener("pointermove", this.onPointerMove);
       host.addEventListener("pointerup", this.onPointerUp);
-      host.addEventListener("pointercancel", this.onPointerUp);
+      host.addEventListener("pointercancel", this.onPointerCancel);
       host.addEventListener("pointerleave", this.onPointerLeave);
     }
 
@@ -351,7 +397,6 @@ export class Sculpture {
     this.fromQuat.set(this.curQuat);
     this.tiltFrom.copy(this.tilt);
     this.station = id;
-    this.loadCards();
     this.travel = this.options.reducedMotion ? TRAVEL + STAGGER : 0;
     this.focusGroup = this.groupIndex(this.focus);
     this.clearHover();
@@ -396,9 +441,7 @@ export class Sculpture {
       this.baseColor[i * 3 + 1] = c.g;
       this.baseColor[i * 3 + 2] = c.b;
     }
-    this.cardColor.copy(cssColor("--card", "#f2eee4"));
-    for (const card of this.cards)
-      if (!card.texture) card.mesh.material.color.copy(this.cardColor);
+    this.paintCards();
     const line = cssColor("--ink", "#16150f");
     for (const lines of this.guides.values())
       (lines.material as LineBasicMaterial).color.copy(line);
@@ -420,7 +463,7 @@ export class Sculpture {
     this.host.removeEventListener("pointerdown", this.onPointerDown);
     this.host.removeEventListener("pointermove", this.onPointerMove);
     this.host.removeEventListener("pointerup", this.onPointerUp);
-    this.host.removeEventListener("pointercancel", this.onPointerUp);
+    this.host.removeEventListener("pointercancel", this.onPointerCancel);
     this.host.removeEventListener("pointerleave", this.onPointerLeave);
     for (const lines of this.guides.values()) {
       lines.geometry.dispose();
@@ -428,7 +471,7 @@ export class Sculpture {
     }
     for (const label of this.labels) label.el.remove();
     for (const card of this.cards) {
-      card.texture?.dispose();
+      card.texture.dispose();
       card.mesh.material.dispose();
     }
     this.cardGeometry.dispose();
@@ -469,40 +512,60 @@ export class Sculpture {
   };
 
   private readonly onPointerDown = (event: PointerEvent) => {
-    if (event.pointerType === "touch" || event.button !== 0) return;
+    if (event.button !== 0) return;
     this.dragging = true;
     this.dragMoved = 0;
     this.dragVelocity = 0;
-    this.host.setPointerCapture(event.pointerId);
+    this.dragLast.set(event.clientX, event.clientY);
     this.host.dataset.dragging = "true";
+    if (event.pointerType === "touch") {
+      // A finger has no hover, so find what is under it now: a tap then
+      // selects it. The browser keeps vertical swipes for scrolling.
+      this.hoverAt.set(event.clientX, event.clientY);
+      this.pick();
+    } else this.host.setPointerCapture(event.pointerId);
   };
 
   private readonly onPointerMove = (event: PointerEvent) => {
-    if (event.pointerType === "touch") return;
     if (this.dragging) {
-      this.dragMoved += Math.abs(event.movementX) + Math.abs(event.movementY);
-      this.dragVelocity = event.movementX * 0.006;
+      // Tracked by hand: `movementX` is not reliable for touch everywhere.
+      const dx = event.clientX - this.dragLast.x;
+      const dy = event.clientY - this.dragLast.y;
+      this.dragLast.set(event.clientX, event.clientY);
+      this.dragMoved += Math.abs(dx) + Math.abs(dy);
+      this.dragVelocity = dx * 0.006;
       this.dragYaw += this.dragVelocity;
       this.dragPitch = Math.max(
         -0.6,
-        Math.min(0.6, this.dragPitch + event.movementY * 0.004),
+        Math.min(0.6, this.dragPitch + dy * 0.004),
       );
       this.dirty = true;
       return;
     }
+    if (event.pointerType === "touch") return;
     this.hoverAt.set(event.clientX, event.clientY);
     this.hoverPending = true;
   };
 
   private readonly onPointerUp = (event: PointerEvent) => {
     if (!this.dragging) return;
+    const key = this.dragMoved < 5 ? this.hoverKey : null;
+    this.endDrag(event);
+    if (key) this.options.onSelect(key);
+  };
+
+  /** The browser took the gesture over (a scroll), so nothing was tapped. */
+  private readonly onPointerCancel = (event: PointerEvent) => {
+    if (this.dragging) this.endDrag(event);
+  };
+
+  private endDrag(event: PointerEvent) {
     this.dragging = false;
     delete this.host.dataset.dragging;
     if (this.host.hasPointerCapture(event.pointerId))
       this.host.releasePointerCapture(event.pointerId);
-    if (this.dragMoved < 5 && this.hoverKey)
-      this.options.onSelect(this.hoverKey);
-  };
+    if (event.pointerType === "touch") this.clearHover();
+  }
 
   private readonly onPointerLeave = () => {
     this.hoverPending = false;
@@ -568,53 +631,74 @@ export class Sculpture {
     });
   }
 
-  /** Fetches the card images once the visitor has started moving. */
-  private loadCards() {
-    if (this.cardsRequested || this.cards.length === 0) return;
-    this.cardsRequested = true;
-    const loader = new ImageLoader();
-    const anisotropy = Math.min(
-      8,
-      this.renderer.capabilities.getMaxAnisotropy(),
-    );
-    for (const card of this.cards) {
-      const key = this.formations[card.station].cards![card.index].key;
-      loader.load(this.options.cardImages![key], (image) => {
-        if (this.disposed) return;
-        // Paint the image onto an opaque sheet so logos with transparency do
-        // not let the card behind show through. Screenshots already match
-        // the card and fill it; anything of another shape is fitted inside.
-        const canvas = document.createElement("canvas");
-        canvas.width = CARD_PIXELS;
-        canvas.height = Math.round((CARD_PIXELS * CARD_HEIGHT) / CARD_WIDTH);
-        const context = canvas.getContext("2d");
-        if (!context) return;
-        const across = canvas.width / image.width;
-        const down = canvas.height / image.height;
-        const matches = Math.abs(across / down - 1) < 0.04;
-        const scale = matches ? Math.max(across, down) : Math.min(across, down);
-        const width = image.width * scale;
-        const height = image.height * scale;
-        context.fillStyle = CARD_BACKING;
-        context.fillRect(0, 0, canvas.width, canvas.height);
-        context.drawImage(
-          image,
-          (canvas.width - width) / 2,
-          matches ? 0 : (canvas.height - height) / 2,
-          width,
-          height,
-        );
+  /** Prints each card's face in the page's own type and colours. */
+  private paintCards() {
+    if (this.cards.length === 0) return;
+    const sans = cssValue("--font-sans", "system-ui, sans-serif");
+    const mono = cssValue("--font-mono", "ui-monospace, monospace");
+    const paper = cssValue("--card", "#f2eee4");
+    const ink = cssValue("--ink", "#16150f");
+    const muted = cssValue("--muted", "#55524a");
+    const rule = cssValue("--line-strong", "#a9a28d");
+    const accent = cssValue("--accent", "#f2440d");
 
-        const texture = new CanvasTexture(canvas);
-        texture.colorSpace = SRGBColorSpace;
-        texture.anisotropy = anisotropy;
-        card.texture = texture;
-        card.mesh.material.map = texture;
-        card.mesh.material.color.set(0xffffff);
-        card.mesh.material.needsUpdate = true;
-        this.dirty = true;
-      });
+    for (const { face, canvas, texture } of this.cards) {
+      const context = canvas.getContext("2d");
+      if (!context) continue;
+      const { width, height } = canvas;
+      const pad = width * 0.07;
+      const inner = width - pad * 2;
+      const small = width * 0.031;
+
+      context.fillStyle = paper;
+      context.fillRect(0, 0, width, height);
+
+      context.font = `500 ${small}px ${mono}`;
+      context.letterSpacing = `${small * 0.08}px`;
+      context.textBaseline = "alphabetic";
+      const top = pad + small;
+      const bottom = height - pad;
+      context.textAlign = "left";
+      context.fillStyle = accent;
+      context.fillText(face.index, pad, top);
+      context.fillStyle = muted;
+      context.fillText(face.place.toUpperCase(), pad, bottom);
+      context.textAlign = "right";
+      context.fillText(face.kind.toUpperCase(), width - pad, top);
+      context.fillText(face.note.toUpperCase(), width - pad, bottom);
+
+      const ruleY = bottom - small * 2.1;
+      context.fillStyle = rule;
+      context.fillRect(pad, top + small * 1.1, inner, 2);
+      context.fillRect(pad, ruleY, inner, 2);
+
+      // The title takes the largest size at which it fits the space between
+      // the rules, and sits on the lower one.
+      context.textAlign = "left";
+      context.fillStyle = ink;
+      const room = ruleY - (top + small * 1.1) - small * 2.4;
+      let size = width * 0.17;
+      let lines: string[] = [];
+      for (; size > width * 0.05; size *= 0.94) {
+        context.font = `600 ${size}px ${sans}`;
+        context.letterSpacing = `${-size * 0.03}px`;
+        lines = wrap(context, face.title, inner);
+        const widest = Math.max(
+          ...lines.map((line) => context.measureText(line).width),
+        );
+        if (widest <= inner && lines.length * size * 0.98 <= room) break;
+      }
+      lines.forEach((line, i) =>
+        context.fillText(
+          line,
+          pad - size * 0.04,
+          ruleY - small * 1.5 - (lines.length - 1 - i) * size * 0.98,
+        ),
+      );
+
+      texture.needsUpdate = true;
     }
+    this.dirty = true;
   }
 
   private readonly loop = (now: number) => {
@@ -727,7 +811,7 @@ export class Sculpture {
     const { pos, scl, quat, group } = formation;
     const matrix = this.mesh.instanceMatrix.array as Float32Array;
     const color = this.mesh.instanceColor!.array as Float32Array;
-    const hasFocus = this.focusGroup >= 0;
+    const lit = this.focusGroup >= 0 && !this.options.quietFocus;
     const glowRate = 1 - Math.exp(-dt * 9);
     const still = this.options.reducedMotion;
 
@@ -786,7 +870,7 @@ export class Sculpture {
       this.curQuat[i4 + 3] = qw;
 
       // glow: +1 for the focused group, -1 for everything else, 0 at rest.
-      const want = hasFocus ? (group[i] === this.focusGroup ? 1 : -1) : 0;
+      const want = lit ? (group[i] === this.focusGroup ? 1 : -1) : 0;
       const glow = still
         ? want
         : this.glow[i] + (want - this.glow[i]) * glowRate;
@@ -839,7 +923,7 @@ export class Sculpture {
     this.mesh.instanceColor!.needsUpdate = true;
   }
 
-  /** Fades the image cards in once their frames have arrived, and out again. */
+  /** Fades the cards in once their frames have arrived, and out again. */
   private updateCards(dt: number) {
     if (this.cards.length === 0) return;
     const rate = this.options.reducedMotion ? 1 : 1 - Math.exp(-dt * 4);

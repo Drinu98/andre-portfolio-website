@@ -14,31 +14,35 @@ const delay = (ms: number) => ({ "--d": `${ms}ms` }) as React.CSSProperties;
 /**
  * On wide screens the hero is laid out like a poster: the sculpture holds the
  * middle of the sheet and the copy sits in the corners around it.
+ *
+ * The hero is on screen at first paint, so it uses `data-enter` (CSS only)
+ * rather than `data-reveal`, which stays hidden until JavaScript has run.
  */
 export const Hero = () => {
   return (
     <section id="home" className="hero" aria-labelledby="home-title">
       <div className="wrap hero__grid">
         <h1 id="home-title" className="hero__title">
-          <span className="mono hero__name" data-reveal>
-            {siteConfig.name} — Full‑stack developer, Malta
+          <span className="mono hero__name" data-enter>
+            {siteConfig.name} — Full-stack developer, Malta
           </span>
-          <span className="hero__line" data-reveal style={delay(80)}>
+          <span className="hero__line" data-enter style={delay(80)}>
             Concept to launch,
           </span>
           <span
             className="hero__line hero__line--end"
-            data-reveal
+            data-enter
             style={delay(160)}
           >
             end to end.
           </span>
         </h1>
 
-        <div className="hero__intro" data-reveal style={delay(240)}>
+        <div className="hero__intro" data-enter style={delay(240)}>
           <p className="hero__lede">
-            I’m a self‑employed full‑stack developer who designs and builds
-            end‑to‑end products, from UI/UX to backend and deployment.
+            I’m a freelance full-stack developer in Malta. I design and build
+            websites, web apps and mobile apps end to end, from UI/UX to
+            backend and deployment.
           </p>
 
           <div className="mono hero__role">
@@ -73,7 +77,7 @@ export const Hero = () => {
         </div>
 
         {/* A key to the sculpture: each row lights one slab of the stack. */}
-        <div className="legend" data-reveal style={delay(320)}>
+        <div className="legend" data-enter style={delay(320)}>
           <p className="mono">Key · The stack</p>
           <ul className="layers">
             {stackLayers.map((layer, index) => (

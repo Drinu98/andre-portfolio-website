@@ -8,8 +8,9 @@ export const Contact = () => {
       <div className="wrap">
         <div className="col">
           <SectionHead station="contact" title="Get in touch">
-            I’m currently looking for new opportunities. Whether you have a
-            question or want to say hi, I’d love to hear from you.
+            Have a website, web app or mobile app in mind? Tell me what you’re
+            building. I take on projects for clients in Malta and worldwide,
+            and I’d love to hear from you.
           </SectionHead>
           <ContactForm />
         </div>

@@ -38,7 +38,7 @@ export type Formation = {
    * Left out, it is framed as a sphere.
    */
   extent?: [number, number];
-  /** Image cards carried by the blocks. `tick` keeps their placement current. */
+  /** Cards carried by the blocks. `tick` keeps their placement current. */
   cards?: Card[];
   /**
    * Rewrites the targets for time-dependent formations. `focus` is the index
@@ -47,7 +47,7 @@ export type Formation = {
   tick?: (time: number, focus: number, snap: boolean) => void;
 };
 
-/** Where one image card sits, in sculpture space. */
+/** Where one card sits, in sculpture space. */
 export type Card = {
   key: string;
   y: number;
@@ -276,6 +276,9 @@ const GOZO: [number, number][] = [
 
 const COMINO: [number, number] = [14.336, 36.012];
 
+// San Ġwann, where the label is pinned.
+const HOME: [number, number] = [14.4786, 35.9094];
+
 const inPolygon = (x: number, y: number, poly: [number, number][]) => {
   let inside = false;
   for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
@@ -333,7 +336,7 @@ const buildIsland = (n: number): Formation => {
 
   type Slot = { ix: number; iz: number; lev: number; land: boolean };
   const slots: Slot[] = [];
-  let peak = { ix: 0, iz: 0, lev: -1 };
+  const levels = new Uint8Array(g * g);
   for (let iz = 0; iz < g; iz++)
     for (let ix = 0; ix < g; ix++) {
       if (!land[iz * g + ix]) continue;
@@ -346,7 +349,7 @@ const buildIsland = (n: number): Formation => {
       );
       for (let lev = 0; lev < levelsHere; lev++)
         slots.push({ ix, iz, lev, land: true });
-      if (levelsHere > peak.lev) peak = { ix, iz, lev: levelsHere };
+      levels[iz * g + ix] = levelsHere;
     }
 
   const sea: { ix: number; iz: number; d: number }[] = [];
@@ -378,6 +381,11 @@ const buildIsland = (n: number): Formation => {
     }
   }
 
+  const home = {
+    ix: Math.floor(((HOME[0] - lon0) / (lon1 - lon0)) * g),
+    iz: Math.floor(((lat1 - HOME[1]) / (lat1 - lat0)) * g),
+  };
+
   const half = size / 2 + 0.25;
   const guides: number[] = [];
   guides.push(-half, lift, -half, half, lift, -half);
@@ -396,11 +404,11 @@ const buildIsland = (n: number): Formation => {
       {
         key: focusKey.place("malta"),
         label: "Malta",
-        sub: "35.90°N 14.51°E",
+        sub: "35.91°N 14.48°E",
         anchor: [
-          (peak.ix + 0.5) * cell - size / 2,
-          lift + (peak.lev + 1.2) * step,
-          (peak.iz + 0.5) * cell - size / 2,
+          (home.ix + 0.5) * cell - size / 2,
+          lift + (levels[home.iz * g + home.ix] + 1.2) * step,
+          (home.iz + 0.5) * cell - size / 2,
         ],
       },
     ],
@@ -546,7 +554,7 @@ const buildOrbits = (n: number): Formation => {
 };
 
 /* -------------------------------------------------------------------------- */
-/* 03 Reel: one framed screenshot per project, on a wheel that turns to        */
+/* 03 Reel: one framed title card per project, on a wheel that turns to        */
 /* whichever project is in focus.                                              */
 /* -------------------------------------------------------------------------- */
 

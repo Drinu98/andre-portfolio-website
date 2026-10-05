@@ -1,8 +1,12 @@
 "use client";
 import { useEffect } from "react";
+import { usePathname } from "next/navigation";
 
 /** Fades in every `[data-reveal]` element the first time it scrolls into view. */
 export const RevealObserver = () => {
+  // Each page brings its own elements, so the observer restarts on navigation.
+  const pathname = usePathname();
+
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
@@ -17,7 +21,7 @@ export const RevealObserver = () => {
     for (const el of document.querySelectorAll("[data-reveal]"))
       observer.observe(el);
     return () => observer.disconnect();
-  }, []);
+  }, [pathname]);
 
   return null;
 };

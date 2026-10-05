@@ -13,7 +13,9 @@ export const Toolkit = () => {
       <div className="wrap">
         <div className="col">
           <SectionHead station="skills" title="Skills & technologies">
-            One ring per discipline. Hover a group and its orbit lights up.
+            The stack I use to design, build and ship web and mobile products:
+            React and Next.js on the front, Node.js and PostgreSQL behind, and
+            Vercel and Railway to run it.
           </SectionHead>
 
           <div>

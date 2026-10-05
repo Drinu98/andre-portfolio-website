@@ -24,9 +24,9 @@ export const skillCategories: SkillCategory[] = [
     key: "backend",
     title: "Backend",
     skills: [
-      "NodeJS",
+      "Node.js",
       "Express",
-      "PostgresSql",
+      "PostgreSQL",
       "Prisma",
       "PlanetScale",
       "Redis",

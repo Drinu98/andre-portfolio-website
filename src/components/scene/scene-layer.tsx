@@ -1,35 +1,36 @@
 "use client";
 import React, { useEffect, useRef, useState } from "react";
-import { getImageProps } from "next/image";
-import { projects } from "@/constants/projects";
+import { hostOf, isExternal, projects } from "@/constants/projects";
 import {
   figureNumber,
   focusKey,
   stations,
   type StationId,
 } from "@/lib/stations";
-import type { Sculpture, SculptureHit } from "./sculpture";
+import type { CardFace, Sculpture, SculptureHit } from "./sculpture";
 
 const DESKTOP = "(min-width: 960px)";
+/** A phone on its side: too short to stack the piece above the hero copy. */
+const SHORT_LANDSCAPE =
+  "(max-width: 959px) and (orientation: landscape) and (max-height: 540px)";
 
 /** The window event the contact form fires once a message is sent. */
 export const PULSE_EVENT = "sculpture:pulse";
 
-/**
- * The project screenshots, resized by the image optimiser so the scene loads
- * about a tenth of the original files. The `1x` candidate is plenty for a card.
- */
-const cardImages = Object.fromEntries(
-  projects.map((project) => {
-    const { props } = getImageProps({
-      src: project.src,
-      alt: "",
-      width: 828,
-      height: 592,
-    });
-    const url = props.srcSet?.split(", ")[0].split(" ")[0] ?? props.src;
-    return [focusKey.project(project.title), url];
-  }),
+/** What each project's card on the reel says. */
+const cardFaces: Record<string, CardFace> = Object.fromEntries(
+  projects.map((project, index) => [
+    focusKey.project(project.title),
+    {
+      index: String(index + 1).padStart(2, "0"),
+      title: project.title,
+      kind: project.kind,
+      place: isExternal(project.href)
+        ? hostOf(project.href)
+        : "Internal system",
+      note: `${project.stack.length} tools`,
+    },
+  ]),
 );
 
 /** How far down the viewport an entry has to be to take the scroll focus. */
@@ -52,6 +53,7 @@ export const SceneLayer = () => {
   const tooltipRef = useRef<HTMLDivElement>(null);
   const [station, setStation] = useState<StationId>("home");
   const [interactive, setInteractive] = useState(false);
+  const [touch, setTouch] = useState(false);
 
   useEffect(() => {
     const host = hostRef.current;
@@ -61,6 +63,8 @@ export const SceneLayer = () => {
 
     const root = document.documentElement;
     const desktop = window.matchMedia(DESKTOP);
+    const shortLandscape = window.matchMedia(SHORT_LANDSCAPE);
+    const home = document.getElementById("home");
     const reducedMotion = window.matchMedia(
       "(prefers-reduced-motion: reduce)",
     ).matches;
@@ -145,14 +149,35 @@ export const SceneLayer = () => {
         // On small screens the piece leads the hero, then fades back so the
         // text that scrolls over it stays readable.
         const lead = current === "home";
-        const progress = Math.min(1, window.scrollY / (height * 0.34));
-        sculpture?.setFrame({
-          centerX: width / 2,
-          centerY: lead ? height * 0.3 : height * 0.5,
-          fitWidth: width * 0.94,
-          fitHeight: lead ? height * 0.4 : height * 0.62,
-        });
-        host.style.setProperty("--scene-fade", String(1 - progress * 0.86));
+        const beside = shortLandscape.matches;
+        // Stacked, the piece starts to fade as soon as the copy scrolls up
+        // into it. Beside the copy it can wait until the hero is leaving.
+        const progress = beside
+          ? Math.min(
+              1,
+              Math.max(
+                0,
+                (height - (home?.getBoundingClientRect().bottom ?? 0)) /
+                  (height * 0.5),
+              ),
+            )
+          : Math.min(1, window.scrollY / (height * 0.34));
+        sculpture?.setFrame(
+          lead && beside
+            ? {
+                centerX: width * 0.77,
+                centerY: height * 0.57,
+                fitWidth: width * 0.4,
+                fitHeight: height * 0.7,
+              }
+            : {
+                centerX: width / 2,
+                centerY: lead ? height * 0.3 : height * 0.5,
+                fitWidth: width * 0.94,
+                fitHeight: lead ? height * 0.4 : height * 0.62,
+              },
+        );
+        host.style.setProperty("--scene-fade", String(1 - progress * 0.88));
       }
     };
     const schedule = () => {
@@ -227,14 +252,16 @@ export const SceneLayer = () => {
           maxPixelRatio: wide ? 2 : 1.5,
           reducedMotion,
           interactive: wide,
-          // Small screens keep the scene as a faint backdrop, where images
-          // would fight the text, so they get the frames without the cards.
-          cardImages: wide ? cardImages : undefined,
+          quietFocus: !wide,
+          // Small screens keep the scene as a faint backdrop, where cards
+          // would fight the text, so they get the frames without the faces.
+          cardFaces: wide ? cardFaces : undefined,
           onHover,
           onSelect,
         });
         root.dataset.webgl = "ok";
         setInteractive(wide);
+        setTouch(window.matchMedia("(hover: none)").matches);
         measure();
       })
       .catch(() => {
@@ -309,7 +336,7 @@ export const SceneLayer = () => {
         </nav>
         {interactive && (
           <span className="mono figure__hint" aria-hidden="true">
-            Drag to turn · Hover to inspect
+            Drag to turn · {touch ? "Tap" : "Hover"} to inspect
           </span>
         )}
       </div>

@@ -12,9 +12,9 @@ export const Experience = () => {
     >
       <div className="wrap">
         <div className="col">
-          <SectionHead station="experience" title="The path so far">
-            The helix reads bottom to top, oldest role first. Each band is as
-            long as the time spent there.
+          <SectionHead station="experience" title="Experience">
+            Software engineering since 2020: a gaming company’s website, a
+            bank’s internal applications, and now client work of my own.
           </SectionHead>
 
           <div>

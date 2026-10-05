@@ -1,75 +1,220 @@
 export type Project = {
-    title: string;
-    src: string;
-    href: string;
-    description: string;
-    stack: string[];
-}
+  title: string;
+  /** The project's page lives at `/work/<slug>`. */
+  slug: string;
+  /** What kind of thing it is, in a few words. */
+  kind: string;
+  src: string;
+  alt: string;
+  /** The live site, or "/" for a system with no public link. */
+  href: string;
+  description: string;
+  /** Paragraphs for the project page. */
+  overview: string[];
+  highlights: string[];
+  stack: string[];
+};
 
 export const projects: Project[] = [
-    
   {
     title: "Serva",
+    slug: "serva",
+    kind: "Restaurant platform",
     src: "/images/projects/serva.webp",
+    alt: "Screenshot of Serva, an all-in-one ordering and reservations platform for restaurants",
     href: "https://serva.mt",
     description:
-      "An all in one system for restaurants that features QR ordering, table reservations, loyalty programs, Kitchen Display System, and more.",
-    stack: ["Next.js", "Tailwind CSS", "TypeScript", "PostgresSql", "Prisma", "Vercel", "Stripe", "Pusher", "Upstash", "Railway", "Sentry", "Vitest"],
+      "An all-in-one platform for restaurants: QR table ordering, table reservations, loyalty programmes and a Kitchen Display System, built and launched end to end.",
+    overview: [
+      "Serva is an all-in-one system for restaurants. Guests order from a QR code at the table, book tables and collect loyalty rewards, while the kitchen works from a Kitchen Display System.",
+      "I designed and built Serva end to end: the UI/UX and product design, the Next.js frontend, the PostgreSQL and Prisma backend, and the deployment and monitoring around it.",
+    ],
+    highlights: [
+      "QR ordering from the table",
+      "Table reservations",
+      "Loyalty programmes",
+      "Kitchen Display System",
+      "Payments through Stripe",
+      "Real-time updates with Pusher",
+    ],
+    stack: [
+      "Next.js",
+      "Tailwind CSS",
+      "TypeScript",
+      "PostgreSQL",
+      "Prisma",
+      "Vercel",
+      "Stripe",
+      "Pusher",
+      "Upstash",
+      "Railway",
+      "Sentry",
+      "Vitest",
+    ],
   },
   {
-      title: "FPL Focal",
-      src: "/images/projects/fplPage.webp",
-      href: "https://fpl.page",
-      description:
-        "The fpl.page app is a dashboard built to supplement Fantasy Premier League, containing a wide range of useful data and information, with updates in real time.",
-      stack: ["Next.js", "Tailwind CSS", "TypeScript", "PostgresSql", "Prisma", "Vercel"],
+    title: "FPL Focal",
+    slug: "fpl-focal",
+    kind: "Fantasy Premier League dashboard",
+    src: "/images/projects/fplPage.webp",
+    alt: "Screenshot of FPL Focal, a Fantasy Premier League dashboard at fpl.page",
+    href: "https://fpl.page",
+    description:
+      "A companion dashboard for Fantasy Premier League managers at fpl.page, bringing a wide range of data and information together with real-time updates.",
+    overview: [
+      "FPL Focal, at fpl.page, is a dashboard built to supplement Fantasy Premier League. It gathers a wide range of useful data and information in one place and updates in real time.",
+      "It is a full-stack Next.js and TypeScript app with a PostgreSQL database behind Prisma, deployed on Vercel.",
+    ],
+    highlights: [
+      "A wide range of Fantasy Premier League data in one dashboard",
+      "Updates in real time",
+      "Full-stack Next.js app on PostgreSQL and Prisma",
+    ],
+    stack: [
+      "Next.js",
+      "Tailwind CSS",
+      "TypeScript",
+      "PostgreSQL",
+      "Prisma",
+      "Vercel",
+    ],
   },
   {
     title: "Fuwamai Management System",
+    slug: "fuwamai-management-system",
+    kind: "Internal management system",
     src: "/images/projects/fuwamaiLogo.webp",
+    alt: "Fuwamai logo",
     href: "/",
     description:
-      "A full stack management system for Fuwamai with important features such as cleaning schedules and temperature sheets",
-    stack: ["Next.js", "Tailwind CSS", "TypeScript", "PostgresSql", "Prisma", "Vercel"],
+      "A full-stack internal management system for the Fuwamai bakery, covering day-to-day records such as cleaning schedules and temperature sheets.",
+    overview: [
+      "An internal system built for Fuwamai, a Japanese soufflé bakery in Malta. It handles the bakery's day-to-day operational records, including cleaning schedules and temperature sheets.",
+      "The system is private to the business, so there is no public link. It runs on Next.js, TypeScript, PostgreSQL and Prisma, deployed on Vercel.",
+    ],
+    highlights: [
+      "Cleaning schedules",
+      "Temperature sheets",
+      "Full-stack Next.js app on PostgreSQL and Prisma",
+    ],
+    stack: [
+      "Next.js",
+      "Tailwind CSS",
+      "TypeScript",
+      "PostgreSQL",
+      "Prisma",
+      "Vercel",
+    ],
   },
   {
-      title: "Advanced Telecommunications Systems",
-      src: "/images/projects/ats.webp",
-      description:
-        "A website for a local telecommunications company called Advanced Telecommunications Systems",
-      href: "https://telesystems.com.mt",
-      stack: ["Squarespace", "HTML5", "CSS3"],
+    title: "Advanced Telecommunications Systems",
+    slug: "advanced-telecommunications-systems",
+    kind: "Company website",
+    src: "/images/projects/ats.webp",
+    alt: "Screenshot of the Advanced Telecommunications Systems website",
+    href: "https://telesystems.com.mt",
+    description:
+      "The company website for Advanced Telecommunications Systems, a telecommunications company in Malta, built on Squarespace with custom HTML and CSS.",
+    overview: [
+      "The company website for Advanced Telecommunications Systems, a telecommunications company based in Malta.",
+      "It is built on Squarespace, with custom HTML and CSS where the platform's own blocks were not enough.",
+    ],
+    highlights: ["Squarespace build", "Custom HTML and CSS"],
+    stack: ["Squarespace", "HTML5", "CSS3"],
   },
   {
-      title: "Fuwamai",
-      src: "/images/projects/fuwamai.webp",
-      description:
-        "A website for a local Japanese Souffle bakery called Fuwamai",
-      href: "https://fuwamai.com",
-      stack: ["Squarespace", "HTML5", "CSS3"],
+    title: "Fuwamai",
+    slug: "fuwamai",
+    kind: "Bakery website",
+    src: "/images/projects/fuwamai.webp",
+    alt: "Screenshot of the website for Fuwamai, a Japanese soufflé bakery in Malta",
+    href: "https://fuwamai.com",
+    description:
+      "The website for Fuwamai, a Japanese soufflé bakery in Malta, built on Squarespace with custom HTML and CSS.",
+    overview: [
+      "The public website for Fuwamai, a Japanese soufflé bakery in Malta.",
+      "It is built on Squarespace, with custom HTML and CSS on top. I also built the bakery's internal management system.",
+    ],
+    highlights: ["Squarespace build", "Custom HTML and CSS"],
+    stack: ["Squarespace", "HTML5", "CSS3"],
   },
   {
-      title: "Matthew Bonello",
-      src: "/images/projects/matthewbonello.webp",
-      description:
-        "A website for a local Fitness Coach called Matthew Bonello",
-      href: "https://www.matthewbonello.com",
-    stack: ["Next.js", "Tailwind CSS", "Vercel", "PostgresSql", "Prisma", "TypeScript"],
+    title: "Matthew Bonello",
+    slug: "matthew-bonello",
+    kind: "Fitness coach website",
+    src: "/images/projects/matthewbonello.webp",
+    alt: "Screenshot of the website for Malta-based fitness coach Matthew Bonello",
+    href: "https://www.matthewbonello.com",
+    description:
+      "A custom Next.js website for Malta-based fitness coach Matthew Bonello, backed by PostgreSQL and Prisma and deployed on Vercel.",
+    overview: [
+      "The website for Matthew Bonello, a fitness coach based in Malta.",
+      "It is a custom build rather than a template: a Next.js and TypeScript frontend styled with Tailwind CSS, a PostgreSQL database behind Prisma, and deployment on Vercel.",
+    ],
+    highlights: [
+      "Custom Next.js build",
+      "PostgreSQL database behind Prisma",
+      "Deployed on Vercel",
+    ],
+    stack: [
+      "Next.js",
+      "Tailwind CSS",
+      "Vercel",
+      "PostgreSQL",
+      "Prisma",
+      "TypeScript",
+    ],
   },
   {
-      title: "Tribe Malta",
-      src: "/images/projects/tribe.webp",
-      description:
-        "A website for a local restaurant in Malta called Tribe with Stripe integration for payments and a CMS for managing the website",
-      href: "https://tribemalta.com",
-      stack: ["Next.js", "Tailwind CSS", "Vercel", "PostgresSql", "Prisma", "TypeScript", "Stripe"],
+    title: "Tribe Malta",
+    slug: "tribe-malta",
+    kind: "Restaurant website",
+    src: "/images/projects/tribe.webp",
+    alt: "Screenshot of the website for Tribe, a restaurant in Malta",
+    href: "https://tribemalta.com",
+    description:
+      "The website for Tribe, a restaurant in Malta, with Stripe payments and a CMS for managing the site's content.",
+    overview: [
+      "The website for Tribe, a restaurant in Malta.",
+      "It takes payments through a Stripe integration and includes a CMS for managing the website. It is built with Next.js and TypeScript on PostgreSQL and Prisma, deployed on Vercel.",
+    ],
+    highlights: [
+      "Stripe integration for payments",
+      "CMS for managing the website",
+      "Custom Next.js build on PostgreSQL and Prisma",
+    ],
+    stack: [
+      "Next.js",
+      "Tailwind CSS",
+      "Vercel",
+      "PostgreSQL",
+      "Prisma",
+      "TypeScript",
+      "Stripe",
+    ],
   },
   {
-      title: "FoodMedia",
-      src: "/images/projects/foodmedia.webp",
-      description:
-        "A website for a local food media company called FoodMedia that showcases their products and services",
-      href: "https://foodmedia.mt",
-      stack: ["Squarespace", "HTML5", "CSS3"],
+    title: "FoodMedia",
+    slug: "foodmedia",
+    kind: "Company website",
+    src: "/images/projects/foodmedia.webp",
+    alt: "Screenshot of the website for FoodMedia, a food media company in Malta",
+    href: "https://foodmedia.mt",
+    description:
+      "The website for FoodMedia, a food media company in Malta, showcasing its products and services. Built on Squarespace.",
+    overview: [
+      "The website for FoodMedia, a food media company in Malta. It showcases the company's products and services.",
+      "It is built on Squarespace, with custom HTML and CSS on top.",
+    ],
+    highlights: [
+      "Showcases products and services",
+      "Squarespace build",
+      "Custom HTML and CSS",
+    ],
+    stack: ["Squarespace", "HTML5", "CSS3"],
   },
 ];
+
+export const isExternal = (href: string) => /^https?:\/\//.test(href);
+export const hostOf = (href: string) =>
+  new URL(href).host.replace(/^www\./, "");

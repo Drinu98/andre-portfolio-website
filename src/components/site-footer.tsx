@@ -19,7 +19,7 @@ export const SiteFooter = () => {
                 <span className="sr-only"> (opens in a new tab)</span>
               </a>
             ))}
-            <a href="#home">Back to top ↑</a>
+            <a href="#top">Back to top ↑</a>
           </div>
         </div>
       </div>
