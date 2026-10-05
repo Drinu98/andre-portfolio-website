@@ -129,18 +129,31 @@ export const projects: Project[] = [
   {
     title: "Fuwamai",
     slug: "fuwamai",
-    kind: "Bakery website",
+    kind: "Bakery website and online ordering",
     src: "/images/projects/fuwamai.webp",
-    alt: "Screenshot of the website for Fuwamai, a Japanese soufflé bakery in Malta",
+    alt: "Screenshot of the website for Fuwamai, a Japanese soufflé pancake bakery in Malta",
     href: "https://fuwamai.com",
     description:
-      "The website for Fuwamai, a Japanese soufflé bakery in Malta, built on Squarespace with custom HTML and CSS.",
+      "The website for Fuwamai, Malta's first Japanese soufflé pancake bakery, rebuilt in Next.js with a full menu and online ordering for pickup and delivery.",
     overview: [
-      "The public website for Fuwamai, a Japanese soufflé bakery in Malta.",
-      "It is built on Squarespace, with custom HTML and CSS on top. I also built the bakery's internal management system.",
+      "The public website for Fuwamai, Malta's first Japanese soufflé pancake bakery, with outlets in St Julian's and Valletta. It presents the brand, the full menu and the franchise offer, and lets customers order online for pickup or delivery.",
+      "The site started on Squarespace and is now a custom Next.js build deployed on Vercel. I also built the bakery's internal management system.",
     ],
-    highlights: ["Squarespace build", "Custom HTML and CSS"],
-    stack: ["Squarespace", "HTML5", "CSS3"],
+    highlights: [
+      "Online ordering for pickup and delivery",
+      "Full menu across pancakes, sandos, bakery, coffee and drinks",
+      "Customer accounts with Google and email sign-in",
+      "Franchise page for prospective franchisees",
+      "Customer survey and contact form",
+    ],
+    stack: [
+      "Next.js",
+      "React",
+      "NextAuth",
+      "Resend",
+      "Cloudflare R2",
+      "Vercel",
+    ],
   },
   {
     title: "Matthew Bonello",
