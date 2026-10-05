@@ -1,3 +1,5 @@
+export type ProjectImage = { src: string; alt: string };
+
 export type Project = {
   title: string;
   /** The project's page lives at `/work/<slug>`. */
@@ -6,6 +8,8 @@ export type Project = {
   kind: string;
   src: string;
   alt: string;
+  /** More screenshots, shown after `src` as a carousel on the project page. */
+  gallery?: ProjectImage[];
   /** The live site, or "/" for a system with no public link. */
   href: string;
   description: string;
@@ -132,6 +136,20 @@ export const projects: Project[] = [
     kind: "Bakery website and online ordering",
     src: "/images/projects/fuwamai.webp",
     alt: "Screenshot of the website for Fuwamai, a Japanese soufflé pancake bakery in Malta",
+    gallery: [
+      {
+        src: "/images/projects/fuwamai-menu.webp",
+        alt: "Screenshot of the Fuwamai menu page, showing the soufflé pancakes",
+      },
+      {
+        src: "/images/projects/fuwamai-about.webp",
+        alt: "Screenshot of the Fuwamai about page, titled Malta's first soufflé bakery",
+      },
+      {
+        src: "/images/projects/fuwamai-franchise.webp",
+        alt: "Screenshot of the Fuwamai franchise page",
+      },
+    ],
     href: "https://fuwamai.com",
     description:
       "The website for Fuwamai, Malta's first Japanese soufflé pancake bakery, rebuilt in Next.js with a full menu and online ordering for pickup and delivery.",
@@ -185,20 +203,37 @@ export const projects: Project[] = [
   {
     title: "Tribe Malta",
     slug: "tribe-malta",
-    kind: "Restaurant website",
+    kind: "Restaurant website and online shop",
     src: "/images/projects/tribe.webp",
-    alt: "Screenshot of the website for Tribe, a restaurant in Malta",
+    alt: "Screenshot of the website for TRiBE, an all-day breakfast, brunch and cocktail restaurant group in Malta",
+    gallery: [
+      {
+        src: "/images/projects/tribe-menu.webp",
+        alt: "Screenshot of the TRiBE menu page for the Balluta location, with its allergen key",
+      },
+      {
+        src: "/images/projects/tribe-shop.webp",
+        alt: "Screenshot of the TRiBE online shop, listing pastries, cakes and merch",
+      },
+      {
+        src: "/images/projects/tribe-locations.webp",
+        alt: "Screenshot of the TRiBE locations page, listing its restaurants in Malta",
+      },
+    ],
     href: "https://tribemalta.com",
     description:
-      "The website for Tribe, a restaurant in Malta, with Stripe payments and a CMS for managing the site's content.",
+      "The website for TRiBE, an all-day breakfast, brunch and cocktail restaurant group in Malta and the UK, with per-location menus, table bookings, an online shop and a CMS behind it.",
     overview: [
-      "The website for Tribe, a restaurant in Malta.",
+      "The website for TRiBE, an all-day breakfast, brunch and cocktail restaurant group with five locations in Malta and one in the United Kingdom. Visitors pick their country, then browse each location's menu, book a table, enquire about event catering or order from the online shop.",
       "It takes payments through a Stripe integration and includes a CMS for managing the website. It is built with Next.js and TypeScript on PostgreSQL and Prisma, deployed on Vercel.",
     ],
     highlights: [
-      "Stripe integration for payments",
+      "Separate Malta and UK sites behind a country chooser",
+      "Menus per location, with an allergen key",
+      "Online shop for pastries, cakes and merch, with Stripe payments",
+      "Table bookings and event catering enquiries",
+      "Customer accounts, with Google sign-in",
       "CMS for managing the website",
-      "Custom Next.js build on PostgreSQL and Prisma",
     ],
     stack: [
       "Next.js",
@@ -207,6 +242,7 @@ export const projects: Project[] = [
       "PostgreSQL",
       "Prisma",
       "TypeScript",
+      "NextAuth",
       "Stripe",
     ],
   },

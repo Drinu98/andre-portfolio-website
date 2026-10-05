@@ -3,6 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { JsonLd } from "@/components/json-ld";
+import { ProjectCarousel } from "@/components/project-carousel";
 import { hostOf, isExternal, projects } from "@/constants/projects";
 import { pageMetadata } from "@/lib/metadata";
 import { projectJsonLd, projectPath } from "@/lib/structured-data";
@@ -107,14 +108,23 @@ export default async function ProjectPage({ params }: Props) {
         </div>
 
         <figure className="case__media">
-          <Image
-            src={project.src}
-            alt={project.alt}
-            width={1200}
-            height={857}
-            sizes="(min-width: 960px) 46vw, 100vw"
-            priority
-          />
+          {project.gallery ? (
+            <ProjectCarousel
+              images={[
+                { src: project.src, alt: project.alt },
+                ...project.gallery,
+              ]}
+            />
+          ) : (
+            <Image
+              src={project.src}
+              alt={project.alt}
+              width={1200}
+              height={857}
+              sizes="(min-width: 960px) 46vw, 100vw"
+              priority
+            />
+          )}
           <figcaption className="mono">
             {external ? hostOf(project.href) : "Internal system"}
           </figcaption>
